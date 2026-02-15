@@ -1,0 +1,925 @@
+// src/pages/MentalTracker.tsx
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import { getMoodEntries, saveMoodEntry } from "@/services/api";
+import api from "@/services/api"; // axios instance
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+import { toast } from "@/components/ui/sonner";
+import { Badge } from "@/components/ui/badge";
+
+const PRIMARY = "#1e3a8a";
+const SECONDARY = "#3b82f6";
+const GRADIENT_CLASS = "bg-[linear-gradient(135deg,#1e3a8a_0%,#3b82f6_100%)]";
+
+const getMoodLabel = (value: number) => {
+  const labels = ["Very Poor", "Poor", "Neutral", "Good", "Excellent"];
+  return labels[Math.max(0, Math.min(4, (value || 3) - 1))];
+};
+
+const getAnxietyLabel = (value: number) => {
+  const labels = ["Severe", "High", "Moderate", "Mild", "Minimal"];
+  return labels[Math.max(0, Math.min(4, (value || 3) - 1))];
+};
+
+const getSleepLabel = (value: number) => {
+  const labels = ["Very Poor", "Poor", "Fair", "Good", "Excellent"];
+  return labels[Math.max(0, Math.min(4, (value || 3) - 1))];
+};
+
+const GUEST_KEY = "mindease_guest_id";
+
+const ensureGuestId = (): string => {
+  if (typeof window === "undefined") return `guest_${Date.now()}`;
+  let id = localStorage.getItem(GUEST_KEY);
+  if (!id) {
+    id = `guest_${Date.now()}_${Math.floor(Math.random() * 90000 + 10000)}`;
+    localStorage.setItem(GUEST_KEY, id);
+  }
+  return id;
+};
+
+/* ---------- small numeric helpers ---------- */
+const avg = (arr: number[]) =>
+  arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
+
+/**
+ * Pearson correlation (returns null if not enough data)
+ */
+const pearsonCorrelation = (a: number[], b: number[]) => {
+  if (a.length < 2 || b.length < 2 || a.length !== b.length) return null;
+  const n = a.length;
+  const meanA = avg(a);
+  const meanB = avg(b);
+  let num = 0;
+  let denA = 0;
+  let denB = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    num += da * db;
+    denA += da * da;
+    denB += db * db;
+  }
+  const denom = Math.sqrt(denA * denB);
+  if (denom === 0) return null;
+  return num / denom;
+};
+
+/**
+ * Trend slope via simple linear regression (returns slope)
+ * x will be 0..n-1, y = mood values
+ */
+const linearSlope = (y: number[]) => {
+  const n = y.length;
+  if (n < 2) return 0;
+  const xMean = (n - 1) / 2;
+  const yMean = avg(y);
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i++) {
+    const xi = i;
+    num += (xi - xMean) * (y[i] - yMean);
+    den += (xi - xMean) * (xi - xMean);
+  }
+  if (den === 0) return 0;
+  return num / den;
+};
+
+const MentalTracker: React.FC = () => {
+  const { user } = useAuth();
+  const [date, setDate] = useState<Date>(new Date());
+  const [mood, setMood] = useState<number>(3);
+  const [anxiety, setAnxiety] = useState<number>(3);
+  const [sleep, setSleep] = useState<number>(3);
+  const [notes, setNotes] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  interface MoodEntry {
+    date: string;
+    mood: number;
+    anxiety: number;
+    sleep: number;
+    notes?: string;
+    timestamp?: string | null;
+  }
+
+  const [entries, setEntries] = useState<MoodEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"entry" | "insights" | "history">(
+    "entry"
+  );
+
+  // derive owner id: prefer logged-in user id, otherwise persistent guest id
+  const ownerId = (user?.id ?? ensureGuestId()) as string | number;
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchEntries = async () => {
+      setLoading(true);
+      try {
+        // use ownerId (either user.id or guest id)
+        const fetchedEntries = await getMoodEntries(ownerId);
+        const normalized = (fetchedEntries || []).map((e: any) => ({
+          date: e.date,
+          mood: Number(e.mood),
+          anxiety: Number(e.anxiety),
+          sleep: Number(e.sleep),
+          notes: e.notes ?? "",
+          timestamp: e.timestamp ?? null,
+        }));
+        if (mounted) setEntries(normalized);
+      } catch (error) {
+        console.error("Error fetching mood entries:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchEntries();
+
+    return () => {
+      mounted = false;
+    };
+    // note: ownerId intentionally omitted from deps because ensureGuestId stores stable id in localStorage;
+    // we only want to refetch when user changes (login state) so include user in deps:
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setIsSubmitting(true);
+
+    const entry = {
+      date: format(date, "yyyy-MM-dd"),
+      mood: Number(mood),
+      anxiety: Number(anxiety),
+      sleep: Number(sleep),
+      notes,
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      // 1) Save locally (localStorage) — works for both guests and logged-in users
+      await saveMoodEntry(ownerId, entry);
+
+      // 2) Try sending to backend for admin analytics (non-blocking)
+      try {
+        const payload: any = {
+          user_id: user?.id ?? null,
+          date: entry.date,
+          mood: entry.mood,
+          anxiety: entry.anxiety,
+          sleep: entry.sleep,
+          notes: entry.notes ?? "",
+          source: "mental-tracker",
+        };
+        // include guest_id so backend can choose to keep or ignore it
+        if (
+          typeof ownerId === "string" &&
+          String(ownerId).startsWith("guest_")
+        ) {
+          payload.guest_id = ownerId;
+        }
+        await api.post("/api/games/mood", payload);
+      } catch (err) {
+        // backend failure is non-fatal — local storage is the single source of truth for the UI
+        console.warn("POST /api/games/mood failed:", err);
+      }
+
+      // 3) Refresh entries from local storage (or backend when available)
+      const updatedEntries = await getMoodEntries(ownerId);
+      const normalized = (updatedEntries || []).map((e: any) => ({
+        date: e.date,
+        mood: Number(e.mood),
+        anxiety: Number(e.anxiety),
+        sleep: Number(e.sleep),
+        notes: e.notes ?? "",
+        timestamp: e.timestamp ?? null,
+      }));
+      setEntries(normalized);
+
+      toast.success("Your mood has been recorded");
+
+      // Reset form
+      setDate(new Date());
+      setMood(3);
+      setAnxiety(3);
+      setSleep(3);
+      setNotes("");
+      setActiveTab("insights");
+    } catch (error) {
+      console.error("Error saving mood entry:", error);
+      toast.error("Failed to save your mood entry");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Process entries for charts (last 14)
+  const processedEntries = [...entries]
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(-14)
+    .map((entry) => ({
+      date: format(new Date(entry.date), "MMM dd"),
+      mood: entry.mood,
+      anxiety: entry.anxiety,
+      sleep: entry.sleep,
+    }));
+
+  const mockEntries = [
+    { date: "Apr 19", mood: 3, anxiety: 4, sleep: 2 },
+    { date: "Apr 20", mood: 2, anxiety: 3, sleep: 2 },
+    { date: "Apr 21", mood: 2, anxiety: 3, sleep: 3 },
+    { date: "Apr 22", mood: 3, anxiety: 4, sleep: 3 },
+    { date: "Apr 23", mood: 3, anxiety: 3, sleep: 4 },
+    { date: "Apr 24", mood: 4, anxiety: 4, sleep: 4 },
+    { date: "Apr 25", mood: 4, anxiety: 5, sleep: 3 },
+    { date: "Apr 26", mood: 3, anxiety: 4, sleep: 3 },
+    { date: "Apr 27", mood: 3, anxiety: 3, sleep: 3 },
+    { date: "Apr 28", mood: 2, anxiety: 2, sleep: 2 },
+    { date: "Apr 29", mood: 3, anxiety: 3, sleep: 3 },
+    { date: "Apr 30", mood: 4, anxiety: 4, sleep: 4 },
+    { date: "May 01", mood: 4, anxiety: 4, sleep: 4 },
+    { date: "May 02", mood: 5, anxiety: 5, sleep: 5 },
+  ];
+
+  const chartData =
+    processedEntries.length > 0 ? processedEntries : mockEntries;
+
+  /* ---------- Derived analytics for insights ---------- */
+  // compute averages from entries (use all entries, not just last 14)
+  const avgMood =
+    entries.length > 0 ? avg(entries.map((e) => Number(e.mood))) : 0;
+  const avgAnxiety =
+    entries.length > 0 ? avg(entries.map((e) => Number(e.anxiety))) : 0;
+  const avgSleep =
+    entries.length > 0 ? avg(entries.map((e) => Number(e.sleep))) : 0;
+
+  // trend detection: slope of mood over processedEntries (last 14)
+  const moodValuesForTrend = (
+    processedEntries.length > 0 ? processedEntries : mockEntries
+  ).map((d) => Number(d.mood));
+  const slope = linearSlope(moodValuesForTrend);
+
+  let trendLabel = "stable";
+  let trendMessage =
+    "Your mood appears relatively stable over the tracked period.";
+  // thresholds chosen empirically; slope > ~0.05 per index considered improving
+  if (slope > 0.05) {
+    trendLabel = "improving";
+    trendMessage =
+      "Overall your mood has been improving over the tracked period. Keep doing the things that help.";
+  } else if (slope < -0.05) {
+    trendLabel = "declining";
+    trendMessage =
+      "Your mood shows a slight decline recently. Consider checking in with self-care routines or a counsellor.";
+  }
+
+  // pattern detection: correlation between today's sleep and next-day mood
+  // build arrays sleep[i] and mood[i+1]
+  let sleepToNextMoodCorr: number | null = null;
+  try {
+    const sorted = [...entries].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const sleepArr: number[] = [];
+    const nextMoodArr: number[] = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      sleepArr.push(Number(sorted[i].sleep));
+      nextMoodArr.push(Number(sorted[i + 1].mood));
+    }
+    sleepToNextMoodCorr =
+      sleepArr.length > 0 ? pearsonCorrelation(sleepArr, nextMoodArr) : null;
+  } catch (e) {
+    sleepToNextMoodCorr = null;
+  }
+
+  let patternMessage = "No clear pattern detected.";
+  if (sleepToNextMoodCorr !== null) {
+    const r = sleepToNextMoodCorr;
+    if (r >= 0.5) {
+      patternMessage =
+        "There is a fairly strong positive relationship between your sleep quality and next-day mood.";
+    } else if (r >= 0.25) {
+      patternMessage =
+        "There appears to be a modest positive relationship between sleep and next-day mood.";
+    } else if (r <= -0.5) {
+      patternMessage =
+        "There is a fairly strong negative relationship between sleep and next-day mood (unexpected).";
+    } else if (r <= -0.25) {
+      patternMessage =
+        "There is a modest negative relationship between sleep and next-day mood.";
+    } else {
+      patternMessage = "No clear relationship between sleep and next-day mood.";
+    }
+  }
+
+  // suggestions derived from averages
+  const suggestions: string[] = [];
+  if (avgSleep > 0 && avgSleep < 3) {
+    suggestions.push(
+      "Focus on improving sleep (consistent schedule, reduce screens before bed)."
+    );
+  }
+  if (avgAnxiety > 3.5) {
+    suggestions.push(
+      "Your average anxiety is comparatively high — try brief breathing or grounding exercises and consider speaking with a counsellor if it persists."
+    );
+  }
+  if (avgMood > 0 && avgMood < 3.2) {
+    suggestions.push(
+      "Mood appears low on average — consider regular small activities that lift mood (walks, social time, sunlight)."
+    );
+  }
+  if (suggestions.length === 0) {
+    suggestions.push(
+      "Keep up the healthy habits. Continue tracking and review changes over time."
+    );
+  }
+
+  /* ---------- Weekly distribution (per-owner) ---------- */
+  // Build weekday averages using entries (Mon..Sun)
+  const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekdayBuckets: { sum: number; count: number }[] = Array(7)
+    .fill(0)
+    .map(() => ({ sum: 0, count: 0 }));
+
+  for (const e of entries) {
+    try {
+      const d = new Date(e.date + "T00:00:00");
+      if (!isNaN(d.getTime())) {
+        const wd = d.getDay(); // 0 Sun - 6 Sat
+        weekdayBuckets[wd].sum += Number(e.mood);
+        weekdayBuckets[wd].count += 1;
+      }
+    } catch (e) {}
+  }
+
+  const weeklyDistribution =
+    entries.length > 0
+      ? // map to Mon..Sun order (UI earlier used Mon first; keep Mon..Sun)
+        ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => {
+          const idx = weekdayNames.indexOf(label);
+          const bucket = weekdayBuckets[idx];
+          return {
+            day: label,
+            mood: bucket.count > 0 ? round1(bucket.sum / bucket.count) : 0, // show 0 if no data for that day
+          };
+        })
+      : // fallback to mock (if no entries)
+        [
+          { day: "Mon", mood: 3.5 },
+          { day: "Tue", mood: 3.2 },
+          { day: "Wed", mood: 3.8 },
+          { day: "Thu", mood: 4.1 },
+          { day: "Fri", mood: 4.5 },
+          { day: "Sat", mood: 4.2 },
+          { day: "Sun", mood: 3.7 },
+        ];
+
+  return (
+    <div className="min-h-screen pt-6 pb-16 bg-white">
+      <div className="mindease-container">
+        <div className="mb-8">
+          <h1 className="page-heading" style={{ color: PRIMARY }}>
+            Mental Health Tracker
+          </h1>
+          <p className="text-gray-600">
+            Track your daily mood, anxiety, and sleep patterns to gain insights
+            into your mental wellbeing.
+          </p>
+        </div>
+
+        <div className="mb-6 flex space-x-4 border-b overflow-auto">
+          <button
+            className={cn(
+              "pb-2 font-medium whitespace-nowrap",
+              activeTab === "entry"
+                ? `border-b-2 text-[${PRIMARY}] border-[${PRIMARY}]`
+                : "text-gray-500"
+            )}
+            onClick={() => setActiveTab("entry")}
+            style={
+              activeTab === "entry"
+                ? { color: PRIMARY, borderBottomColor: PRIMARY }
+                : undefined
+            }
+          >
+            Log Today
+          </button>
+          <button
+            className={cn(
+              "pb-2 font-medium whitespace-nowrap",
+              activeTab === "insights"
+                ? `border-b-2 text-[${PRIMARY}] border-[${PRIMARY}]`
+                : "text-gray-500"
+            )}
+            onClick={() => setActiveTab("insights")}
+            style={
+              activeTab === "insights"
+                ? { color: PRIMARY, borderBottomColor: PRIMARY }
+                : undefined
+            }
+          >
+            Insights
+          </button>
+          <button
+            className={cn(
+              "pb-2 font-medium whitespace-nowrap",
+              activeTab === "history"
+                ? `border-b-2 text-[${PRIMARY}] border-[${PRIMARY}]`
+                : "text-gray-500"
+            )}
+            onClick={() => setActiveTab("history")}
+            style={
+              activeTab === "history"
+                ? { color: PRIMARY, borderBottomColor: PRIMARY }
+                : undefined
+            }
+          >
+            History
+          </button>
+        </div>
+
+        {activeTab === "entry" && (
+          <Card>
+            <form onSubmit={handleSubmit}>
+              <CardHeader>
+                <CardTitle style={{ color: PRIMARY }}>Log Your Mood</CardTitle>
+                <CardDescription>
+                  Record how you're feeling today to track patterns over time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Date Picker */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !date && "text-gray-400"
+                        )}
+                        style={{ borderColor: PRIMARY, color: "#111827" }}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(newDate) => newDate && setDate(newDate)}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Mood Slider */}
+                <div className="space-y-4">
+                  <Label>
+                    Overall Mood:{" "}
+                    <span style={{ color: PRIMARY }} className="font-medium">
+                      {getMoodLabel(mood)}
+                    </span>
+                  </Label>
+                  <div className="pl-3 pr-3">
+                    <Slider
+                      value={[mood]}
+                      min={1}
+                      max={5}
+                      step={1}
+                      onValueChange={(value) => setMood(value[0])}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Very Poor</span>
+                    <span>Poor</span>
+                    <span>Neutral</span>
+                    <span>Good</span>
+                    <span>Excellent</span>
+                  </div>
+                </div>
+
+                {/* Anxiety Slider */}
+                <div className="space-y-4">
+                  <Label>
+                    Anxiety Level:{" "}
+                    <span style={{ color: PRIMARY }} className="font-medium">
+                      {getAnxietyLabel(anxiety)}
+                    </span>
+                  </Label>
+                  <div className="pl-3 pr-3">
+                    <Slider
+                      value={[anxiety]}
+                      min={1}
+                      max={5}
+                      step={1}
+                      onValueChange={(value) => setAnxiety(value[0])}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Severe</span>
+                    <span>High</span>
+                    <span>Moderate</span>
+                    <span>Mild</span>
+                    <span>Minimal</span>
+                  </div>
+                </div>
+
+                {/* Sleep Quality Slider */}
+                <div className="space-y-4">
+                  <Label>
+                    Sleep Quality:{" "}
+                    <span style={{ color: PRIMARY }} className="font-medium">
+                      {getSleepLabel(sleep)}
+                    </span>
+                  </Label>
+                  <div className="pl-3 pr-3">
+                    <Slider
+                      value={[sleep]}
+                      min={1}
+                      max={5}
+                      step={1}
+                      onValueChange={(value) => setSleep(value[0])}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Very Poor</span>
+                    <span>Poor</span>
+                    <span>Fair</span>
+                    <span>Good</span>
+                    <span>Excellent</span>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="How are you feeling? What happened today?"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full ${GRADIENT_CLASS} text-white`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Entry"
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        )}
+
+        {activeTab === "insights" && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle style={{ color: PRIMARY }}>Mood Trends</CardTitle>
+                <CardDescription>
+                  Your mental wellness patterns over the last 14 days.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[220px] md:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[1, 5]} allowDecimals={false} />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="mood"
+                        name="Mood"
+                        stroke={SECONDARY}
+                        strokeWidth={2}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="anxiety"
+                        name="Anxiety"
+                        stroke={PRIMARY}
+                        strokeWidth={2}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="sleep"
+                        name="Sleep Quality"
+                        stroke={SECONDARY}
+                        strokeWidth={2}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle style={{ color: PRIMARY }}>
+                    Trend Analysis
+                  </CardTitle>
+                  <CardDescription>
+                    Summary of your mood patterns and potential insights.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Mood Summary</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                          <div
+                            className="text-2xl font-bold"
+                            style={{ color: PRIMARY }}
+                          >
+                            {entries.length > 0
+                              ? round1(avgMood).toFixed(1)
+                              : "3.8"}
+                          </div>
+                          <div className="text-xs text-gray-500">Avg. Mood</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                          <div
+                            className="text-2xl font-bold"
+                            style={{ color: PRIMARY }}
+                          >
+                            {entries.length > 0
+                              ? round1(avgAnxiety).toFixed(1)
+                              : "4.1"}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Avg. Anxiety
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-3 text-center">
+                          <div
+                            className="text-2xl font-bold"
+                            style={{ color: PRIMARY }}
+                          >
+                            {entries.length > 0
+                              ? round1(avgSleep).toFixed(1)
+                              : "3.5"}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Avg. Sleep
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Insights</h3>
+                      <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                          <Badge variant="outline" className="mt-1">
+                            Trend
+                          </Badge>
+                          <span>
+                            {entries.length > 0
+                              ? `${
+                                  trendLabel.charAt(0).toUpperCase() +
+                                  trendLabel.slice(1)
+                                } — ${trendMessage}`
+                              : "No entries yet to compute trend."}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Badge variant="outline" className="mt-1">
+                            Pattern
+                          </Badge>
+                          <span>
+                            {entries.length > 1
+                              ? patternMessage
+                              : "Not enough data to determine patterns yet."}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Badge variant="outline" className="mt-1">
+                            Suggestion
+                          </Badge>
+                          <div>
+                            {suggestions.map((s, i) => (
+                              <div key={i} className="text-sm">
+                                • {s}
+                              </div>
+                            ))}
+                          </div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle style={{ color: PRIMARY }}>
+                    Weekly Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    How your mood varies throughout the week.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px] md:h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={weeklyDistribution}
+                        margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="day" />
+                        <YAxis domain={[0, 5]} allowDecimals={false} />
+                        <Tooltip />
+                        <Bar
+                          dataKey="mood"
+                          name="Average Mood"
+                          fill={PRIMARY}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ color: PRIMARY }}>Entry History</CardTitle>
+              <CardDescription>
+                Your past mood tracking entries.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="py-20 flex justify-center">
+                  <Loader2
+                    className="h-6 w-6 animate-spin"
+                    style={{ color: PRIMARY }}
+                  />
+                </div>
+              ) : entries.length > 0 ? (
+                <div className="space-y-4">
+                  {[...entries]
+                    .sort(
+                      (a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    )
+                    .map((entry, index) => (
+                      <div key={index} className="border rounded-lg p-4">
+                        <div className="flex flex-wrap justify-between items-center mb-4">
+                          <div className="font-medium text-gray-800">
+                            {format(new Date(entry.date), "EEEE, MMMM d, yyyy")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {entry.timestamp
+                              ? format(new Date(entry.timestamp), "h:mm a")
+                              : ""}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 mb-3">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">
+                              Mood
+                            </div>
+                            <div className="flex items-center">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ background: SECONDARY }}
+                              />
+                              <span className="text-sm ml-2">
+                                {getMoodLabel(entry.mood)}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">
+                              Anxiety
+                            </div>
+                            <div className="flex items-center">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ background: PRIMARY }}
+                              />
+                              <span className="text-sm ml-2">
+                                {getAnxietyLabel(entry.anxiety)}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">
+                              Sleep
+                            </div>
+                            <div className="flex items-center">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ background: SECONDARY }}
+                              />
+                              <span className="text-sm ml-2">
+                                {getSleepLabel(entry.sleep)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {entry.notes && (
+                          <div className="mt-4 bg-gray-50 p-3 rounded text-sm text-gray-800">
+                            {entry.notes}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="py-20 text-center">
+                  <p className="text-gray-500 mb-4">
+                    No entries yet. Start tracking your mood to see your
+                    history.
+                  </p>
+                  <Button
+                    onClick={() => setActiveTab("entry")}
+                    className={`${GRADIENT_CLASS} text-white`}
+                  >
+                    Log Today's Mood
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MentalTracker;

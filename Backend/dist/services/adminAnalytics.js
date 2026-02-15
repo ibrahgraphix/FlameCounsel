@@ -1,0 +1,183 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.fetchSystemAnalytics = void 0;
+// src/services/adminAnalytics.ts
+const db_1 = __importDefault(require("../config/db"));
+/**
+ * fetchSystemAnalytics
+ * - If opts.counselorId is provided -> compute analytics scoped to that counselor.
+ * - Otherwise -> compute system-wide analytics.
+ *
+ * Returned shape matches what the frontend expects.
+ */
+const fetchSystemAnalytics = async (opts) => {
+    const activeWindow = "30 days";
+    const counselorId = typeof opts?.counselorId !== "undefined"
+        ? String(opts.counselorId)
+        : undefined;
+    try {
+        if (counselorId) {
+            // Counselor-scoped queries (ONLY use columns we are confident exist, e.g., counselor_id)
+            // Note: we intentionally DO NOT attempt to reference `counselors.id` because some schemas
+            // name the primary key differently (e.g., counselor_id). To avoid "column does not exist"
+            // errors we skip that query and treat counselorsCount as 1 (the counselor themself).
+            const qStudentsCount = `SELECT COUNT(DISTINCT student_id)::int AS count FROM bookings WHERE counselor_id = $1`;
+            // If your sessions table uses a different column name, adjust it accordingly.
+            const qSessionNotesCount = `SELECT COUNT(*)::int AS count FROM session_notes WHERE counselor_id = $1`;
+            const qBookingsCount = `SELECT COUNT(*)::int AS count FROM bookings WHERE counselor_id = $1`;
+            const qBookingsToday = `SELECT COUNT(*)::int AS count FROM bookings WHERE counselor_id = $1 AND created_at::date = CURRENT_DATE`;
+            const qAppointmentsBreakdown = `
+        SELECT
+          COUNT(*)::int AS total,
+          SUM(CASE WHEN lower(status) = 'completed' THEN 1 ELSE 0 END)::int AS completed,
+          SUM(CASE WHEN lower(status) IN ('pending','confirmed') AND (booking_date::date >= CURRENT_DATE) THEN 1 ELSE 0 END)::int AS upcoming,
+          SUM(CASE WHEN lower(status) IN ('canceled','cancelled') THEN 1 ELSE 0 END)::int AS cancelled
+        FROM bookings
+        WHERE counselor_id = $1
+      `;
+            const qActiveUsers = `
+        SELECT COUNT(DISTINCT student_id)::int AS count
+        FROM bookings
+        WHERE counselor_id = $1
+          AND (booking_date >= (now() - interval '${activeWindow}') OR created_at >= (now() - interval '${activeWindow}'))
+      `;
+            const [studentsRes, 
+            // counselorsRes, -- removed to avoid referencing a potential non-existent 'id' column
+            notesRes, bookingsRes, bookingsTodayRes, apptRes, activeUsersRes,] = await Promise.all([
+                db_1.default.query(qStudentsCount, [Number(counselorId)]),
+                // pool.query(qCounselorsCount, [Number(counselorId)]), // intentionally omitted
+                db_1.default.query(qSessionNotesCount, [Number(counselorId)]),
+                db_1.default.query(qBookingsCount, [Number(counselorId)]),
+                db_1.default.query(qBookingsToday, [Number(counselorId)]),
+                db_1.default.query(qAppointmentsBreakdown, [Number(counselorId)]),
+                db_1.default.query(qActiveUsers, [Number(counselorId)]),
+            ]);
+            const studentsCount = Number(studentsRes.rows[0]?.count ?? 0);
+            // We omitted the counselors count query to avoid schema mismatch errors.
+            const counselorsCount = 1; // the counselor themself
+            const sessionNotesCount = Number(notesRes.rows[0]?.count ?? 0);
+            const bookingsCount = Number(bookingsRes.rows[0]?.count ?? 0);
+            const bookingsToday = Number(bookingsTodayRes.rows[0]?.count ?? 0);
+            const apptRow = apptRes.rows[0] ?? {};
+            const appointments = {
+                total: Number(apptRow.total ?? bookingsCount),
+                completed: Number(apptRow.completed ?? 0),
+                upcoming: Number(apptRow.upcoming ?? 0),
+                cancelled: Number(apptRow.cancelled ?? 0),
+            };
+            const activeUsers = Number(activeUsersRes.rows[0]?.count ?? 0);
+            const userCount = studentsCount + (counselorsCount || 1);
+            // Mood distribution - placeholder zeros; add real queries if you have a moods table
+            const moodDistribution = [
+                { name: "Mon", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Tue", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Wed", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Thu", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Fri", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Sat", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Sun", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+            ];
+            return {
+                userCount,
+                activeUsers,
+                blogPosts: sessionNotesCount,
+                communityPosts: bookingsCount,
+                moodDistribution,
+                appointments,
+                bookingsToday,
+            };
+        }
+        else {
+            // System-wide queries (existing behavior)
+            const qStudentsCount = `SELECT COUNT(*)::int AS count FROM students`;
+            const qCounselorsCount = `SELECT COUNT(*)::int AS count FROM counselors`;
+            const qSessionNotesCount = `SELECT COUNT(*)::int AS count FROM session_notes`;
+            const qBookingsCount = `SELECT COUNT(*)::int AS count FROM bookings`;
+            const qBookingsToday = `SELECT COUNT(*)::int AS count FROM bookings WHERE created_at::date = CURRENT_DATE`;
+            const qAppointmentsBreakdown = `
+        SELECT
+          COUNT(*)::int AS total,
+          SUM(
+            CASE
+              WHEN lower(status) = 'completed' THEN 1
+              WHEN lower(status) = 'confirmed' AND (booking_date::date < CURRENT_DATE) THEN 1
+              ELSE 0
+            END
+          )::int AS completed,
+          SUM(
+            CASE
+              WHEN lower(status) IN ('pending', 'confirmed') AND (booking_date::date >= CURRENT_DATE) THEN 1
+              ELSE 0
+            END
+          )::int AS upcoming,
+          SUM(
+            CASE
+              WHEN lower(status) IN ('canceled','cancelled') THEN 1
+              ELSE 0
+            END
+          )::int AS cancelled
+        FROM bookings
+      `;
+            const qActiveUsers = `
+        SELECT COUNT(*)::int AS count FROM (
+          SELECT student_id AS id, last_active FROM students
+          UNION ALL
+          SELECT counselor_id AS id, last_active FROM counselors
+        ) t
+        WHERE t.last_active IS NOT NULL
+          AND t.last_active >= (now() - interval '${activeWindow}')
+      `;
+            const [studentsRes, counselorsRes, notesRes, bookingsRes, bookingsTodayRes, apptRes, activeUsersRes,] = await Promise.all([
+                db_1.default.query(qStudentsCount),
+                db_1.default.query(qCounselorsCount),
+                db_1.default.query(qSessionNotesCount),
+                db_1.default.query(qBookingsCount),
+                db_1.default.query(qBookingsToday),
+                db_1.default.query(qAppointmentsBreakdown),
+                db_1.default.query(qActiveUsers),
+            ]);
+            const studentsCount = Number(studentsRes.rows[0]?.count ?? 0);
+            const counselorsCount = Number(counselorsRes.rows[0]?.count ?? 0);
+            const sessionNotesCount = Number(notesRes.rows[0]?.count ?? 0);
+            const bookingsCount = Number(bookingsRes.rows[0]?.count ?? 0);
+            const bookingsToday = Number(bookingsTodayRes.rows[0]?.count ?? 0);
+            const apptRow = apptRes.rows[0] ?? {};
+            const appointments = {
+                total: Number(apptRow.total ?? bookingsCount),
+                completed: Number(apptRow.completed ?? 0),
+                upcoming: Number(apptRow.upcoming ?? 0),
+                cancelled: Number(apptRow.cancelled ?? 0),
+            };
+            const activeUsers = Number(activeUsersRes.rows[0]?.count ?? 0);
+            const userCount = studentsCount + counselorsCount;
+            // moodDistribution placeholder (keep existing mock or replace with your real mood table counts)
+            const moodDistribution = [
+                { name: "Mon", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Tue", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Wed", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Thu", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Fri", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Sat", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+                { name: "Sun", excellent: 0, good: 0, neutral: 0, poor: 0, bad: 0 },
+            ];
+            return {
+                userCount,
+                activeUsers,
+                blogPosts: sessionNotesCount,
+                communityPosts: bookingsCount,
+                moodDistribution,
+                appointments,
+                bookingsToday,
+            };
+        }
+    }
+    catch (err) {
+        console.error("adminAnalytics.fetchSystemAnalytics error (counselorId=%s):", counselorId, err);
+        throw err;
+    }
+};
+exports.fetchSystemAnalytics = fetchSystemAnalytics;
+exports.default = { fetchSystemAnalytics: exports.fetchSystemAnalytics };
