@@ -8,7 +8,7 @@ import "swiper/css";
 import "swiper/css/effect-fade";
 import { useDetectDarkMode } from "@/components/ui/card";
 
-const slides = [{ src: "Assets/flameUni.webp", alt: "Counseling session" }];
+const slides = [{ src: "/assets/flameUni.webp", alt: "Counseling session" }];
 
 const HeroSection: React.FC = () => {
   const isDark = useDetectDarkMode();

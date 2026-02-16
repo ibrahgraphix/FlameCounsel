@@ -286,7 +286,7 @@ const Login: React.FC = () => {
           <CardHeader className="py-6 px-6 flex-shrink-0">
             <div className="flex flex-col items-center justify-center">
               <img
-                src="/Assets/FLAME.png"
+                src="/assets/FLAME.png"
                 alt="FLAME Logo"
                 className="h-24 w-24 object-contain mb-4"
               />

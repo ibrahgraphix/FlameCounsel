@@ -40,7 +40,7 @@ const Header: React.FC = () => {
           className="flex items-center gap-2"
         >
           <img
-            src="/Assets/FLAME.png"
+            src="/assets/FLAME.png"
             alt="Flame Counseling"
             className="h-10 sm:h-12 md:h-16 lg:h-20 w-auto object-contain"
           />
@@ -168,7 +168,7 @@ const Header: React.FC = () => {
                   onClick={() => setSheetOpen(false)}
                 >
                   <img
-                    src="/Assets/FLAME.png"
+                    src="/assets/FLAME.png"
                     alt="logo"
                     className="h-12 w-auto"
                   />

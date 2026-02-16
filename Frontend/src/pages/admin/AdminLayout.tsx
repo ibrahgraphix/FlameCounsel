@@ -106,7 +106,7 @@ const AdminLayout: React.FC = () => {
           >
             <Link to="/" className="flex items-center gap-3">
               <img
-                src="/Assets/FLAME1.png"
+                src="/assets/FLAME1.png"
                 alt="logo"
                 className="h-10 w-auto"
               />
@@ -149,7 +149,7 @@ const AdminLayout: React.FC = () => {
             >
               <Link to="/" className="flex items-center justify-center">
                 <img
-                  src="/Assets/FLAME1.png"
+                  src="/assets/FLAME1.png"
                   alt="Flame Logo"
                   className="h-16 w-auto"
                 />
