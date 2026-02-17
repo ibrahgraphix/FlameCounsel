@@ -3,6 +3,7 @@ import pool from "../config/db";
 import { studentRepository } from "../repositories/studentRepository";
 import { bookingRepository } from "../repositories/bookingRepository";
 import { BookingRow } from "../models/Booking";
+import GoogleCalendarService from "../services/googleCalendarService";
 
 export const bookingService = {
   async createBooking({
@@ -70,7 +71,33 @@ export const bookingService = {
   },
 
   async updateBookingStatus(bookingId: string | number, status: string) {
-    return bookingRepository.updateBookingStatus(bookingId, status);
+    const updated = await bookingRepository.updateBookingStatus(
+      bookingId,
+      status
+    );
+
+    // If canceled, try to remove from Google Calendar
+    if (
+      updated &&
+      (status === "canceled" || status === "cancelled") &&
+      updated.google_event_id &&
+      updated.counselor_id
+    ) {
+      try {
+        await GoogleCalendarService.deleteEvent(
+          updated.counselor_id,
+          updated.google_event_id
+        );
+      } catch (err) {
+        console.error(
+          "Failed to delete Google Calendar event for booking",
+          bookingId,
+          err
+        );
+      }
+    }
+
+    return updated;
   },
 
   async rescheduleBooking(

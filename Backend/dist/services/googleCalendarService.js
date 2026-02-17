@@ -562,5 +562,26 @@ const GoogleCalendarService = {
             };
         }
     },
+    deleteEvent: async (counselorId, googleEventId) => {
+        try {
+            const { calendar, counselor } = await GoogleCalendarService.getAuthorizedCalendarClient(counselorId);
+            const calendarId = counselor.google_calendar_id ?? counselor.email;
+            await calendar.events.delete({
+                calendarId,
+                eventId: googleEventId,
+                sendUpdates: "all",
+            });
+            return { success: true };
+        }
+        catch (err) {
+            // If the event is already deleted (410) or not found (404), consider it a success
+            if (err?.code === 410 || err?.code === 404) {
+                return { success: true, reason: "already_deleted" };
+            }
+            console.error("GoogleCalendarService.deleteEvent error:", err);
+            // We don't throw here to avoid breaking the main cancellation flow, just return failure
+            return { success: false, error: err?.message };
+        }
+    },
 };
 exports.default = GoogleCalendarService;

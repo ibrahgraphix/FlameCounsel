@@ -290,10 +290,31 @@ const Appointments: React.FC = () => {
       setIsLoading(true);
 
       if (user) {
-        const userAppointments = await getUserAppointments(user.id);
+        // Dispatch based on role
+        const role = (user.role ?? "").toLowerCase();
+        
+        let fetchedByRole: any[] = [];
+        if (role === "admin") {
+          fetchedByRole = await import("@/services/api").then(m => m.getAllAppointments());
+        } else if (role === "counselor") {
+          fetchedByRole = await import("@/services/api").then(m => m.getCounselorBookings());
+        } else {
+           // Student or other: use getUserAppointments with EMAIL
+           // Note: getUserAppointments requires a token in localStorage for that email to work via student/view.
+           // If we are logged in as a student, we likely want to hit a different endpoint or ensure api.ts handles it.
+           // However, for now, let's pass email if available.
+           const email = user.email || (user.id && String(user.id).includes("@") ? String(user.id) : null);
+           if (email) {
+              fetchedByRole = await getUserAppointments(email);
+           } else {
+              // fallback if no email found on user object
+              fetchedByRole = []; 
+           }
+        }
+
         setAppointments(
           dedupeAppointments(
-            (userAppointments || []).map((x: any) =>
+            (fetchedByRole || []).map((x: any) =>
               normalizeBookingForClient(x)
             )
           )

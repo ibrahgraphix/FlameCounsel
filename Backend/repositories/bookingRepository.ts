@@ -85,7 +85,7 @@ export const bookingRepository = {
       throw e;
     }
 
-    const q = `UPDATE bookings SET status = $1, updated_at = NOW() WHERE booking_id = $2 RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at`;
+    const q = `UPDATE bookings SET status = $1, updated_at = NOW() WHERE booking_id = $2 RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id`;
 
     try {
       const res = await pool.query(q, [status, bookingId]);

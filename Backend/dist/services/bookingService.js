@@ -8,6 +8,7 @@ exports.bookingService = void 0;
 const db_1 = __importDefault(require("../config/db"));
 const studentRepository_1 = require("../repositories/studentRepository");
 const bookingRepository_1 = require("../repositories/bookingRepository");
+const googleCalendarService_1 = __importDefault(require("../services/googleCalendarService"));
 exports.bookingService = {
     async createBooking({ student_name, student_email, counselor_id, booking_date, booking_time, year_level, additional_notes, }) {
         const client = await db_1.default.connect();
@@ -41,7 +42,20 @@ exports.bookingService = {
         return bookingRepository_1.bookingRepository.getAllBookings();
     },
     async updateBookingStatus(bookingId, status) {
-        return bookingRepository_1.bookingRepository.updateBookingStatus(bookingId, status);
+        const updated = await bookingRepository_1.bookingRepository.updateBookingStatus(bookingId, status);
+        // If canceled, try to remove from Google Calendar
+        if (updated &&
+            (status === "canceled" || status === "cancelled") &&
+            updated.google_event_id &&
+            updated.counselor_id) {
+            try {
+                await googleCalendarService_1.default.deleteEvent(updated.counselor_id, updated.google_event_id);
+            }
+            catch (err) {
+                console.error("Failed to delete Google Calendar event for booking", bookingId, err);
+            }
+        }
+        return updated;
     },
     async rescheduleBooking(bookingId, bookingDate, bookingTime) {
         return bookingRepository_1.bookingRepository.rescheduleBooking(bookingId, bookingDate, bookingTime);

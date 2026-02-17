@@ -346,22 +346,24 @@ export const getUserAppointments = async (owner: string | number) => {
         if (resp?.data?.success) return resp.data.bookings;
         if (Array.isArray(resp?.data)) return resp.data;
         if (resp?.data?.bookings) return resp.data.bookings;
-      } catch (err) {
+      } catch (err: any) {
+         // Log error but do NOT fallback to stale local storage
         console.warn(
-          "Protected student bookings fetch failed; falling back to localStorage:",
-          err
+          "Protected student bookings fetch failed:",
+          err?.message ?? err
         );
+        // Throw or return empty? Returning empty prevents "bug data".
+        return [];
       }
     }
-
-    if (typeof window === "undefined") return [];
-    const stored = localStorage.getItem(APPT_KEY(owner));
-    return stored ? JSON.parse(stored) : [];
+    return [];
   }
 
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(APPT_KEY(owner));
-  return stored ? JSON.parse(stored) : [];
+  // If owner is not an email (e.g. numeric ID) and we are here, 
+  // it implies we can't use the student/view endpoint. 
+  // Previously this returned localStorage mock data. 
+  // We return empty to avoid "bug data".
+  return [];
 };
 
 export const saveUserAppointment = async (
@@ -385,41 +387,9 @@ export const getAllAppointments = async () => {
     if (resp?.data?.bookings) return resp.data.bookings;
   } catch (err) {
     console.warn("getAllAppointments backend failed:", err);
+    return [];
   }
-
-  await new Promise((r) => setTimeout(r, 600));
-  return [
-    {
-      booking_id: "1001",
-      therapistId: 1,
-      therapistName: "Dr. Sarah Johnson",
-      userId: "user123",
-      userName: "John Smith",
-      booking_date: "2025-05-15",
-      booking_time: "10:00",
-      status: "confirmed",
-    },
-    {
-      booking_id: "1002",
-      therapistId: 2,
-      therapistName: "Dr. Michael Chen",
-      userId: "user456",
-      userName: "Emily Davis",
-      booking_date: "2025-05-16",
-      booking_time: "14:30",
-      status: "confirmed",
-    },
-    {
-      booking_id: "1003",
-      therapistId: 3,
-      therapistName: "Dr. Aisha Patel",
-      userId: "user789",
-      userName: "David Wilson",
-      booking_date: "2025-05-17",
-      booking_time: "11:00",
-      status: "cancelled",
-    },
-  ];
+  return [];
 };
 
 export const getCounselorBookings = async () => {
@@ -430,26 +400,11 @@ export const getCounselorBookings = async () => {
     if (resp?.data?.bookings) return resp.data.bookings;
   } catch (err: any) {
     console.warn(
-      "getCounselorBookings backend failed, falling back to localStorage:",
+      "getCounselorBookings backend failed:",
       err?.message || err
     );
+    return [];
   }
-
-  if (typeof window === "undefined") return [];
-  const results: any[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (!key.startsWith("mindease_appointments_")) continue;
-    try {
-      const arr = JSON.parse(localStorage.getItem(key) || "[]");
-      if (!Array.isArray(arr)) continue;
-      for (const b of arr) {
-        results.push(b);
-      }
-    } catch (e) {}
-  }
-  return results;
 };
 
 export const updateBookingStatus = async (
