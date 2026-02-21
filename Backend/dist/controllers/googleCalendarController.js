@@ -172,7 +172,9 @@ const bookSession = async (req, res) => {
             });
         }
         try {
+            console.log(`[GoogleCalendarController] Starting bookSession for student: ${payload.student_email}, counselor: ${payload.counselor_id}`);
             const result = await googleCalendarService_1.default.bookSession(payload);
+            console.log(`[GoogleCalendarController] bookSession success: ${result?.booking?.booking_id}, google_event_id: ${result?.booking?.google_event_id}`);
             return res.json({ success: true, result });
         }
         catch (e) {

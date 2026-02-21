@@ -201,7 +201,9 @@ export const bookSession = async (req: Request, res: Response) => {
     }
 
     try {
+      console.log(`[GoogleCalendarController] Starting bookSession for student: ${payload.student_email}, counselor: ${payload.counselor_id}`);
       const result = await GoogleCalendarService.bookSession(payload as any);
+      console.log(`[GoogleCalendarController] bookSession success: ${result?.booking?.booking_id}, google_event_id: ${result?.booking?.google_event_id}`);
       return res.json({ success: true, result });
     } catch (e: any) {
       console.error("bookSession (service) error:", e);

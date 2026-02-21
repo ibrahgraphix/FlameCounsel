@@ -196,6 +196,7 @@ export const BookingController = {
       }
 
       // persist booking (existing logic)
+      console.log(`[BookingController] Creating legacy booking (no Google Calendar) for student: ${student_email}`);
       const booking = await bookingService.createBooking({
         student_name: student_name ?? null,
         student_email: String(student_email),
