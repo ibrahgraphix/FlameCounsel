@@ -157,10 +157,13 @@ const SettingsPage = () => {
 
   return (
     <div
-      className="p-6 space-y-6 min-h-screen"
-      style={{ background: darkMode ? "#0f1724" : "#f8fafc" }}
+      className="p-6 pb-24 space-y-6 min-h-screen relative"
+      style={{
+        background: darkMode ? "#0f1724" : "#f8fafc",
+        paddingTop: "5rem" // Clear the fixed user panel in AdminLayout
+      }}
     >
-      {/* Page Title & Save Button */}
+      {/* Page Title */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Settings className="h-6 w-6 text-mindease-primary" />
@@ -171,22 +174,6 @@ const SettingsPage = () => {
             Settings
           </h1>
         </div>
-        <Button
-          onClick={handleSaveSettings}
-          disabled={isSaving}
-          className="text-white font-semibold flex items-center gap-2"
-          style={{
-            background: GRADIENT,
-            boxShadow: "0 4px 12px rgba(30,58,138,0.2)",
-          }}
-        >
-          {isSaving ? (
-            <Loader2 className="animate-spin h-4 w-4" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          Save Changes
-        </Button>
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
@@ -357,6 +344,42 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Sticky Bottom Save Bar */}
+      <div
+        className="fixed bottom-6 right-6 left-6 md:left-auto md:w-auto z-40 transition-all"
+        style={{
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 justify-between md:justify-end shadow-2xl"
+          style={{
+            pointerEvents: "auto",
+            boxShadow: "0 10px 40px -10px rgba(0,0,0,0.1)",
+          }}
+        >
+          <div className="hidden sm:block">
+            <p className="text-sm font-medium text-slate-500">Unsaved changes? Make sure to save.</p>
+          </div>
+          <Button
+            onClick={handleSaveSettings}
+            disabled={isSaving}
+            className="text-white font-semibold flex items-center gap-2 px-8 py-6 rounded-xl text-lg transition-transform hover:scale-105 active:scale-95"
+            style={{
+              background: GRADIENT,
+              boxShadow: "0 8px 30px rgba(30,58,138,0.3)",
+            }}
+          >
+            {isSaving ? (
+              <Loader2 className="animate-spin h-5 w-5" />
+            ) : (
+              <Save className="h-5 w-5" />
+            )}
+            Save All Changes
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
