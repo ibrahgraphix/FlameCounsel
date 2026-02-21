@@ -50,6 +50,8 @@ export const loginCounselor = async (email: string, password: string) => {
     name: counselor.name,
     email: counselor.email,
     role: counselor.role,
+    profile_picture: counselor.profile_picture,
+    bio: counselor.bio,
   };
 
   const token = signToken(payload);
@@ -129,6 +131,8 @@ export const loginWithGoogle = async (idToken: string) => {
     name: counselor.name,
     email: counselor.email,
     role: counselor.role ?? "counselor",
+    profile_picture: counselor.profile_picture,
+    bio: counselor.bio,
   };
 
   const token = signToken(tokenPayload);

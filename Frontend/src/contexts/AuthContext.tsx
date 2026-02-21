@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import { setAuthToken } from "@/services/api";
 
 const API_BASE: string =
-  (import.meta.env.VITE_API_BASE as string) ||
+  (import.meta.env.VITE_API_URL as string) ||
   "https://flamestudentcouncil.in:4000";
 
 export type User = {
@@ -14,6 +14,8 @@ export type User = {
   email: string;
   role: string; // keep flexible, we'll compare to 'admin' or 'counselor' as strings
   avatar?: string;
+  profile_picture?: string;
+  bio?: string;
 };
 
 type AuthContextType = {
@@ -94,6 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         name: counselor.name,
         email: counselor.email,
         role: (counselor.role as string) ?? "counselor",
+        profile_picture: counselor.profile_picture,
+        bio: counselor.bio,
       };
 
       // persist token + user and set headers (both global and api instance)
@@ -157,6 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         name: counselor.name,
         email: counselor.email,
         role: (counselor.role as string) ?? "user",
+        profile_picture: counselor.profile_picture,
+        bio: counselor.bio,
       };
 
       try {
@@ -264,6 +270,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         name: counselor.name,
         email: counselor.email,
         role: role,
+        profile_picture: counselor.profile_picture,
+        bio: counselor.bio,
       };
 
       localStorage.setItem("mindease_user", JSON.stringify(loggedUser));

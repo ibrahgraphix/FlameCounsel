@@ -46,6 +46,8 @@ const loginCounselor = async (email, password) => {
         name: counselor.name,
         email: counselor.email,
         role: counselor.role,
+        profile_picture: counselor.profile_picture,
+        bio: counselor.bio,
     };
     const token = (0, jwt_1.signToken)(payload);
     return { token, counselor: payload };
@@ -114,6 +116,8 @@ const loginWithGoogle = async (idToken) => {
         name: counselor.name,
         email: counselor.email,
         role: counselor.role ?? "counselor",
+        profile_picture: counselor.profile_picture,
+        bio: counselor.bio,
     };
     const token = (0, jwt_1.signToken)(tokenPayload);
     return { token, counselor: tokenPayload };

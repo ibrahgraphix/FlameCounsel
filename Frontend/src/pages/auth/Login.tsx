@@ -19,7 +19,7 @@ declare global {
   }
 }
 const API_BASE: string =
-  (import.meta.env.VITE_API_BASE as string) ||
+  (import.meta.env.VITE_API_URL as string) ||
   "https://flamestudentcouncil.in:4000";
 const VITE_GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as
   | string

@@ -65,7 +65,21 @@ app.use(
 );
 
 app.use(bodyParser.json());
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+
+// Resolve public/uploads path robustly for both dev (src) and prod (dist)
+const uploadsPath = [
+  path.join(__dirname, "public/uploads"),
+  path.join(__dirname, "../public/uploads"),
+  path.join(process.cwd(), "public/uploads"),
+  path.join(process.cwd(), "Backend/public/uploads"),
+].find((p) => fs.existsSync(p));
+
+if (uploadsPath) {
+  console.log(`[app] Serving uploads from: ${uploadsPath}`);
+  app.use("/uploads", express.static(uploadsPath));
+} else {
+  console.warn("[app] Could not locate public/uploads directory!");
+}
 // ---------------------- API routes (register first) ----------------------
 
 // Only mount a router if it loaded successfully, otherwise warn and skip.
