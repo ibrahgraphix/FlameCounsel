@@ -1449,13 +1449,16 @@ const Appointments: React.FC = () => {
                               }
                             >
                               <Avatar className="h-10 w-10">
-                                <AvatarImage
-                                  src={c.profile_picture 
-                                    ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
-                                    : (c.avatar ?? makeAvatar(c.name))
-                                  }
-                                  alt={c.name}
-                                />
+                                  <AvatarImage
+                                    src={
+                                      c.profile_picture
+                                        ? (c.profile_picture.startsWith('http') 
+                                            ? c.profile_picture 
+                                            : `${(import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000").replace(/\/$/, "")}${c.profile_picture.startsWith("/") ? "" : "/"}${c.profile_picture}`)
+                                        : makeAvatar(c.name)
+                                    }
+                                    alt={c.name}
+                                  />
                                 <AvatarFallback>
                                   {c.name?.charAt(0) ?? "C"}
                                 </AvatarFallback>
@@ -1467,11 +1470,11 @@ const Appointments: React.FC = () => {
                                 >
                                   {c.name}
                                 </h3>
-                                {c.specialty && (
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {c.specialty}
-                                  </p>
-                                )}
+                                  {/* {c.specialty && (
+                                    <p className={`text-xs ${mutedText} truncate`}>
+                                      {c.specialty}
+                                    </p>
+                                  )} */}
                               </div>
                             </div>
                           ))

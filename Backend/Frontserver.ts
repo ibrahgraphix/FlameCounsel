@@ -22,6 +22,23 @@ console.log("[frontend] Serving client from:", clientBuildPath);
 // 1️⃣ serve static FIRST
 app.use(express.static(clientBuildPath));
 
+// 1.5 serve /uploads so pictures show up if this server is port 7070
+const possibleUploads = [
+  path.join(process.cwd(), "public/uploads"),
+  path.join(process.cwd(), "Backend/public/uploads"),
+  path.join(__dirname, "public/uploads"),
+  path.join(__dirname, "../public/uploads"),
+];
+const rootUploads = possibleUploads.find(p => {
+  try {
+    return fs.existsSync(p) && fs.statSync(p).isDirectory();
+  } catch { return false; }
+}) || path.join(process.cwd(), "public/uploads");
+
+console.log("[frontend] Serving /uploads from:", rootUploads);
+app.use("/uploads", express.static(rootUploads));
+
+
 // 2️⃣ health check
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

@@ -16,11 +16,27 @@ interface MulterRequest extends Request {
 // Multer configuration for profile picture upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const rootUploads = path.join(process.cwd(), "public/uploads");
+    // Standard robust resolution
+    const possibleUploads = [
+      path.join(process.cwd(), "public/uploads"),
+      path.join(process.cwd(), "Backend/public/uploads"),
+      path.join(__dirname, "public/uploads"),
+      path.join(__dirname, "../public/uploads"),
+    ];
+
+    const rootUploads = possibleUploads.find(p => {
+      try {
+        return fs.existsSync(p) && fs.statSync(p).isDirectory();
+      } catch {
+        return false;
+      }
+    }) || path.join(process.cwd(), "public/uploads");
+
     const uploadPath = path.join(rootUploads, "profile_pictures");
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
+    console.log(`[Multer] Saving uploaded file to: ${uploadPath}`);
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
@@ -111,9 +127,20 @@ export const CounselorController = {
         if (current && current.profile_picture) {
           // Robust path resolution for deletion
           const relativePath = current.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
-          const oldPath = path.join(process.cwd(), "public/uploads", relativePath);
+          
+          const possibleRoots = [
+            path.join(process.cwd(), "public/uploads"),
+            path.join(process.cwd(), "Backend/public/uploads"),
+            path.join(__dirname, "public/uploads"),
+            path.join(__dirname, "../public/uploads"),
+          ];
+          const rootUploads = possibleRoots.find(p => fs.existsSync(p)) || path.join(process.cwd(), "public/uploads");
+          
+          const oldPath = path.join(rootUploads, relativePath);
+          console.log(`[CounselorController] Attempting to delete old picture at: ${oldPath}`);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
+            console.log(`[CounselorController] Deleted old picture: ${oldPath}`);
           }
         }
 
@@ -140,9 +167,20 @@ export const CounselorController = {
 
       if (c.profile_picture) {
         const relativePath = c.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
-        const fullPath = path.join(process.cwd(), "public/uploads", relativePath);
+        
+        const possibleRoots = [
+          path.join(process.cwd(), "public/uploads"),
+          path.join(process.cwd(), "Backend/public/uploads"),
+          path.join(__dirname, "public/uploads"),
+          path.join(__dirname, "../public/uploads"),
+        ];
+        const rootUploads = possibleRoots.find(p => fs.existsSync(p)) || path.join(process.cwd(), "public/uploads");
+
+        const fullPath = path.join(rootUploads, relativePath);
+        console.log(`[CounselorController] Attempting to delete picture at: ${fullPath}`);
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath);
+          console.log(`[CounselorController] Deleted picture: ${fullPath}`);
         }
       }
 

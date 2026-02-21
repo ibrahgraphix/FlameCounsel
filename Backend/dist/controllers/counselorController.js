@@ -11,11 +11,26 @@ const counselorRepository_1 = require("../repositories/counselorRepository");
 // Multer configuration for profile picture upload
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
-        const rootUploads = path_1.default.join(process.cwd(), "public/uploads");
+        // Standard robust resolution
+        const possibleUploads = [
+            path_1.default.join(process.cwd(), "public/uploads"),
+            path_1.default.join(process.cwd(), "Backend/public/uploads"),
+            path_1.default.join(__dirname, "public/uploads"),
+            path_1.default.join(__dirname, "../public/uploads"),
+        ];
+        const rootUploads = possibleUploads.find(p => {
+            try {
+                return fs_1.default.existsSync(p) && fs_1.default.statSync(p).isDirectory();
+            }
+            catch {
+                return false;
+            }
+        }) || path_1.default.join(process.cwd(), "public/uploads");
         const uploadPath = path_1.default.join(rootUploads, "profile_pictures");
         if (!fs_1.default.existsSync(uploadPath)) {
             fs_1.default.mkdirSync(uploadPath, { recursive: true });
         }
+        console.log(`[Multer] Saving uploaded file to: ${uploadPath}`);
         cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
@@ -101,9 +116,18 @@ exports.CounselorController = {
                 if (current && current.profile_picture) {
                     // Robust path resolution for deletion
                     const relativePath = current.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
-                    const oldPath = path_1.default.join(process.cwd(), "public/uploads", relativePath);
+                    const possibleRoots = [
+                        path_1.default.join(process.cwd(), "public/uploads"),
+                        path_1.default.join(process.cwd(), "Backend/public/uploads"),
+                        path_1.default.join(__dirname, "public/uploads"),
+                        path_1.default.join(__dirname, "../public/uploads"),
+                    ];
+                    const rootUploads = possibleRoots.find(p => fs_1.default.existsSync(p)) || path_1.default.join(process.cwd(), "public/uploads");
+                    const oldPath = path_1.default.join(rootUploads, relativePath);
+                    console.log(`[CounselorController] Attempting to delete old picture at: ${oldPath}`);
                     if (fs_1.default.existsSync(oldPath)) {
                         fs_1.default.unlinkSync(oldPath);
+                        console.log(`[CounselorController] Deleted old picture: ${oldPath}`);
                     }
                 }
                 const updated = await (0, counselorRepository_1.updateProfile)(id, { profile_picture: profilePicturePath });
@@ -128,9 +152,18 @@ exports.CounselorController = {
                 return res.status(404).json({ success: false, error: "Not found" });
             if (c.profile_picture) {
                 const relativePath = c.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
-                const fullPath = path_1.default.join(process.cwd(), "public/uploads", relativePath);
+                const possibleRoots = [
+                    path_1.default.join(process.cwd(), "public/uploads"),
+                    path_1.default.join(process.cwd(), "Backend/public/uploads"),
+                    path_1.default.join(__dirname, "public/uploads"),
+                    path_1.default.join(__dirname, "../public/uploads"),
+                ];
+                const rootUploads = possibleRoots.find(p => fs_1.default.existsSync(p)) || path_1.default.join(process.cwd(), "public/uploads");
+                const fullPath = path_1.default.join(rootUploads, relativePath);
+                console.log(`[CounselorController] Attempting to delete picture at: ${fullPath}`);
                 if (fs_1.default.existsSync(fullPath)) {
                     fs_1.default.unlinkSync(fullPath);
+                    console.log(`[CounselorController] Deleted picture: ${fullPath}`);
                 }
             }
             const updated = await (0, counselorRepository_1.updateProfile)(id, { profile_picture: "" }); // or null, but repo uses string

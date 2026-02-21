@@ -56,18 +56,38 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 app.use(body_parser_1.default.json());
-// Resolve public/uploads path robustly relative to project root
-// We use process.cwd() as the base to remain consistent regardless of src/ vs dist/
-const rootUploads = path_1.default.join(process.cwd(), "public/uploads");
+// Robustly resolve the public/uploads directory
+// We check multiple locations to handle different execution contexts (dev vs prod, root vs Backend dir)
+const possibleUploads = [
+    path_1.default.join(process.cwd(), "public/uploads"),
+    path_1.default.join(process.cwd(), "Backend/public/uploads"),
+    path_1.default.join(__dirname, "public/uploads"),
+    path_1.default.join(__dirname, "../public/uploads"),
+];
+const rootUploads = possibleUploads.find(p => {
+    try {
+        return fs_1.default.existsSync(p) && fs_1.default.statSync(p).isDirectory();
+    }
+    catch {
+        return false;
+    }
+}) || path_1.default.join(process.cwd(), "public/uploads");
 const profilePicsDir = path_1.default.join(rootUploads, "profile_pictures");
 // Ensure directories exist
 [rootUploads, profilePicsDir].forEach(p => {
     if (!fs_1.default.existsSync(p)) {
-        fs_1.default.mkdirSync(p, { recursive: true });
-        console.log(`[app] Created directory: ${p}`);
+        try {
+            fs_1.default.mkdirSync(p, { recursive: true });
+            console.log(`[app] Created directory: ${p}`);
+        }
+        catch (e) {
+            console.warn(`[app] Could not create directory ${p}:`, e);
+        }
     }
 });
-console.log(`[app] Serving uploads from: ${rootUploads}`);
+console.log(`[app] Root directory (process.cwd()): ${process.cwd()}`);
+console.log(`[app] App directory (__dirname): ${__dirname}`);
+console.log(`[app] Serving /uploads from: ${rootUploads}`);
 app.use("/uploads", express_1.default.static(rootUploads));
 // ---------------------- API routes (register first) ----------------------
 // Only mount a router if it loaded successfully, otherwise warn and skip.

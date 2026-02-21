@@ -20,6 +20,23 @@ const clientBuildPath = path_1.default.resolve(__dirname, "../../Frontend/dist")
 console.log("[frontend] Serving client from:", clientBuildPath);
 // 1️⃣ serve static FIRST
 app.use(express_1.default.static(clientBuildPath));
+// 1.5 serve /uploads so pictures show up if this server is port 7070
+const possibleUploads = [
+    path_1.default.join(process.cwd(), "public/uploads"),
+    path_1.default.join(process.cwd(), "Backend/public/uploads"),
+    path_1.default.join(__dirname, "public/uploads"),
+    path_1.default.join(__dirname, "../public/uploads"),
+];
+const rootUploads = possibleUploads.find(p => {
+    try {
+        return fs_1.default.existsSync(p) && fs_1.default.statSync(p).isDirectory();
+    }
+    catch {
+        return false;
+    }
+}) || path_1.default.join(process.cwd(), "public/uploads");
+console.log("[frontend] Serving /uploads from:", rootUploads);
+app.use("/uploads", express_1.default.static(rootUploads));
 // 2️⃣ health check
 app.get("/health", (_req, res) => res.json({ ok: true }));
 // 3️⃣ SPA fallback ONLY for non-file routes
