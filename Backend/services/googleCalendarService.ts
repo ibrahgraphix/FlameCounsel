@@ -352,6 +352,9 @@ const GoogleCalendarService = {
     year_level?: string | null;
     additional_notes?: string | null;
   }) => {
+    console.log("**************************************************");
+    console.log(`[GoogleCalendarService] STARTING NEW BOOKING: ${payload.student_email} for ${payload.booking_date} at ${payload.booking_time}`);
+    console.log("**************************************************");
     const {
       student_id,
       student_email,

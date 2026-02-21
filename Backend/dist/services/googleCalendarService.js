@@ -266,6 +266,9 @@ const GoogleCalendarService = {
      * bookSession default duration changed to 60 minutes
      */
     bookSession: async (payload) => {
+        console.log("**************************************************");
+        console.log(`[GoogleCalendarService] STARTING NEW BOOKING: ${payload.student_email} for ${payload.booking_date} at ${payload.booking_time}`);
+        console.log("**************************************************");
         const { student_id, student_email, counselor_id, booking_date, booking_time, summary, description, timezone, year_level, additional_notes, } = payload;
         if (!counselor_id || !booking_date || !booking_time) {
             throw new Error("counselor_id, booking_date and booking_time are required");
