@@ -57,8 +57,8 @@ const Appointments: React.FC = () => {
   interface Counselor {
     id: number;
     name: string;
-    avatar?: string;
-    specialty?: string | null;
+    profile_picture?: string | null;
+    bio?: string | null;
     email?: string;
     role?: string | null;
     raw?: any;
@@ -385,7 +385,11 @@ const Appointments: React.FC = () => {
               name,
               email: c.email ?? c.email_address ?? "",
               specialty: c.specialty ?? c.speciality ?? null,
-              avatar: c.avatar ?? makeAvatar(name ?? c.email ?? `c${i + 1}`),
+              profile_picture: c.profile_picture ?? null,
+              bio: c.bio ?? null,
+              avatar: c.profile_picture 
+                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+                : (c.avatar ?? makeAvatar(name ?? c.email ?? `c${i + 1}`)),
               role: c.role ?? c.raw?.role ?? null,
               raw: c,
             };
@@ -428,7 +432,11 @@ const Appointments: React.FC = () => {
               name,
               email: c.email ?? "",
               specialty: c.specialty ?? null,
-              avatar: c.avatar ?? makeAvatar(name ?? c.email ?? `c${c.id}`),
+              profile_picture: c.profile_picture ?? null,
+              bio: c.bio ?? null,
+              avatar: c.profile_picture 
+                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+                : (c.avatar ?? makeAvatar(name ?? c.email ?? `c${c.id}`)),
               role: (c as any).role ?? null,
               raw: c,
             });
@@ -1189,9 +1197,14 @@ const Appointments: React.FC = () => {
                                   style={{ borderColor: PRIMARY }}
                                 >
                                   <AvatarImage
-                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
-                                      appointment.therapistName || "therapist"
-                                    }`}
+                                    src={
+                                      appointment.raw?.counselor?.profile_picture 
+                                        ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.counselor.profile_picture}`)
+                                        : (appointment.raw?.therapist?.profile_picture
+                                          ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.therapist.profile_picture}`)
+                                          : makeAvatar(appointment.therapistName || "therapist")
+                                        )
+                                    }
                                     alt={
                                       appointment.therapistName || "Therapist"
                                     }
@@ -1333,9 +1346,14 @@ const Appointments: React.FC = () => {
                               style={{ borderColor: PRIMARY }}
                             >
                               <AvatarImage
-                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
-                                  appointment.therapistName || "therapist"
-                                }`}
+                                src={
+                                  appointment.raw?.counselor?.profile_picture 
+                                    ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.counselor.profile_picture}`)
+                                    : (appointment.raw?.therapist?.profile_picture
+                                      ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.therapist.profile_picture}`)
+                                      : makeAvatar(appointment.therapistName || "therapist")
+                                    )
+                                }
                                 alt={appointment.therapistName || "Therapist"}
                               />
                               <AvatarFallback>
@@ -1432,7 +1450,10 @@ const Appointments: React.FC = () => {
                             >
                               <Avatar className="h-10 w-10">
                                 <AvatarImage
-                                  src={c.avatar ?? makeAvatar(c.name)}
+                                  src={c.profile_picture 
+                                    ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+                                    : (c.avatar ?? makeAvatar(c.name))
+                                  }
                                   alt={c.name}
                                 />
                                 <AvatarFallback>
@@ -1486,7 +1507,10 @@ const Appointments: React.FC = () => {
                         >
                           <Avatar className="h-8 w-8 mr-2">
                             <AvatarImage
-                              src={selectedCounselor.avatar}
+                              src={selectedCounselor.profile_picture 
+                                ? (selectedCounselor.profile_picture.startsWith('http') ? selectedCounselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${selectedCounselor.profile_picture}`)
+                                : (selectedCounselor.avatar ?? makeAvatar(selectedCounselor.name))
+                              }
                               alt={selectedCounselor.name}
                             />
                             <AvatarFallback>

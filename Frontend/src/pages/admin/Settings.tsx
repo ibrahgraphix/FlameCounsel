@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, Loader2, Save, Clock, Calendar as CalendarIcon } from "lucide-react";
+import { Settings, Loader2, Save, Clock, Calendar as CalendarIcon, User as UserIcon, Camera } from "lucide-react";
 import { useDarkMode } from "@/contexts/Darkmode";
 import { toast } from "@/components/ui/sonner";
 import api, {
@@ -13,6 +13,8 @@ import api, {
   getCounselors,
   getCounselorSettings,
   updateCounselorSettings,
+  updateCounselorProfile,
+  uploadProfilePicture,
 } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,6 +50,12 @@ const SettingsPage = () => {
     }))
   );
   const [sessionDuration, setSessionDuration] = useState<number>(60);
+  const [profileName, setProfileName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
 
   // theme colors
   const PRIMARY = "#1e3a8a";
@@ -63,10 +71,19 @@ const SettingsPage = () => {
       try {
         if (user && user.role?.toLowerCase() === "counselor") {
           setCounselor(user);
+          setProfileName(user.name || "");
+          setProfileBio(user.bio || "");
+          setProfilePicture(user.profile_picture || user.avatar || null);
           return;
         }
         const all = await getCounselors();
-        if (all && all.length > 0) setCounselor(all[0]);
+        if (all && all.length > 0) {
+          const c = all[0];
+          setCounselor(c);
+          setProfileName(c.name || "");
+          setProfileBio(c.bio || "");
+          setProfilePicture(c.profile_picture || c.avatar || null);
+        }
       } catch (err) {
         console.error("Failed to fetch counselor:", err);
       }
@@ -80,26 +97,33 @@ const SettingsPage = () => {
       const loadSettings = async () => {
         setIsLoading(true);
         try {
-          const data = await getCounselorSettings(counselorId);
-          if (data) {
-            if (data.availability && data.availability.length > 0) {
-              // Merge with default DAYS to ensure all days are present
+          const [settingsData, profileData] = await Promise.all([
+            getCounselorSettings(counselorId),
+            getCounselorById(counselorId)
+          ]);
+
+          if (settingsData) {
+            if (settingsData.availability && settingsData.availability.length > 0) {
               const merged = DAYS.map((d) => {
-                const found = data.availability.find(
+                const found = settingsData.availability.find(
                   (a: any) => a.day_of_week === d.value
                 );
-                return (
-                  found || {
-                    day_of_week: d.value,
-                    start_time: "09:00:00",
-                    end_time: "17:00:00",
-                    is_enabled: false,
-                  }
-                );
+                return found || {
+                  day_of_week: d.value,
+                  start_time: "09:00:00",
+                  end_time: "17:00:00",
+                  is_enabled: false,
+                };
               });
               setAvailability(merged);
             }
-            if (data.sessionDuration) setSessionDuration(data.sessionDuration);
+            if (settingsData.sessionDuration) setSessionDuration(settingsData.sessionDuration);
+          }
+
+          if (profileData) {
+            setProfileName(profileData.name || "");
+            setProfileBio(profileData.bio || "");
+            setProfilePicture(profileData.profile_picture || profileData.avatar || null);
           }
         } catch (err) {
           console.warn("Could not load counselor settings:", err);
@@ -119,15 +143,45 @@ const SettingsPage = () => {
 
     setIsSaving(true);
     try {
+      // Save settings (availability & duration)
       await updateCounselorSettings(counselorId, {
         availability,
         sessionDuration,
       });
+
+      // Save profile (name & bio)
+      await updateCounselorProfile(counselorId, {
+        name: profileName,
+        bio: profileBio,
+      });
+
+      // Upload picture if selected
+      if (selectedFile) {
+        const uploadRes = await uploadProfilePicture(counselorId, selectedFile);
+        if (uploadRes?.profile_picture) {
+          const fullPath = uploadRes.profile_picture.startsWith("http") 
+            ? uploadRes.profile_picture 
+            : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${uploadRes.profile_picture}`;
+          setProfilePicture(fullPath);
+          setSelectedFile(null);
+          setPreviewUrl(null);
+        }
+      }
+
       toast.success("Settings saved successfully!");
     } catch (err: any) {
       toast.error("Failed to save settings: " + (err?.message ?? err));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
     }
   };
 
@@ -176,8 +230,11 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="calendar" className="w-full">
+      <Tabs defaultValue="profile" className="w-full">
         <TabsList className="mb-4">
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <UserIcon className="h-4 w-4" /> Profile
+          </TabsTrigger>
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <Clock className="h-4 w-4" /> Calendar & Availability
           </TabsTrigger>
@@ -188,6 +245,89 @@ const SettingsPage = () => {
             <span className="h-4 w-4">⚙️</span> Preferences
           </TabsTrigger>
         </TabsList>
+
+        {/* --- Profile Tab --- */}
+        <TabsContent value="profile" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Profile Picture */}
+            <Card className="lg:col-span-1 h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Camera className="h-5 w-5 text-blue-500" />
+                  Profile Picture
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center space-y-4">
+                <div className="relative group">
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    {previewUrl || profilePicture ? (
+                      <img 
+                        src={previewUrl || profilePicture || ""} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="h-12 w-12 text-slate-400" />
+                    )}
+                  </div>
+                  <label 
+                    htmlFor="picture-upload" 
+                    className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-full transition-opacity"
+                  >
+                    <Camera className="h-6 w-6" />
+                  </label>
+                  <input 
+                    id="picture-upload" 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                  />
+                </div>
+                <p className="text-xs text-slate-500 text-center">
+                  Click to upload a profile picture.<br/>Only JPEG, PNG or WebP (max 5MB).
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Profile Info */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <UserIcon className="h-5 w-5 text-blue-500" />
+                  General Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full-name">Full Name</Label>
+                  <Input 
+                    id="full-name" 
+                    value={profileName} 
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className={darkMode ? "bg-slate-800 border-slate-700" : ""}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Short Bio</Label>
+                  <textarea 
+                    id="bio"
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
+                    placeholder="Write a short bio about yourself..."
+                    className={`flex min-h-[120px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-900"
+                    }`}
+                  />
+                  <p className="text-xs text-slate-500 italic">
+                    This bio will be shown to students when they book an appointment.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         {/* --- Calendar Tab --- */}
         <TabsContent value="calendar" className="space-y-6">

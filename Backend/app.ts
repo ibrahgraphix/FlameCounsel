@@ -65,6 +65,7 @@ app.use(
 );
 
 app.use(bodyParser.json());
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 // ---------------------- API routes (register first) ----------------------
 
 // Only mount a router if it loaded successfully, otherwise warn and skip.

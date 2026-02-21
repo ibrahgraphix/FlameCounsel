@@ -125,10 +125,13 @@ const AdminUsers: React.FC = () => {
             const name = c.name ?? c.full_name ?? c.raw?.name ?? id;
             const email = c.email ?? c.raw?.email ?? "";
             const avatar =
-              c.avatar ??
-              (name
-                ? makeAvatar(name)
-                : makeAvatar(email ?? `counselor-${id}`));
+              c.profile_picture
+                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+                : (c.avatar ??
+                    (name
+                      ? makeAvatar(name)
+                      : makeAvatar(email ?? `counselor-${id}`)));
+
             const statusRaw =
               (c.status ?? c.raw?.status ?? "active")
                 ?.toString()

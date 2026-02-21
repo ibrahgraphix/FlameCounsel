@@ -59,8 +59,13 @@ const normalizeCounselor = (r: any, fallbackId?: number) => {
     name,
     role: (r?.role ?? r?.user_role ?? r?.role_name ?? null) as string | null,
     specialty: r?.specialty ?? r?.speciality ?? null,
-    avatar: avatarFor(name),
+    avatar:
+      r?.profile_picture ??
+      r?.avatar ??
+      avatarFor(name),
     email: r?.email ?? null,
+    profile_picture: r?.profile_picture ?? null,
+    bio: r?.bio ?? null,
     raw: r,
   };
 };
@@ -132,6 +137,32 @@ export const updateCounselorSettings = async (counselorId: number, settings: any
     return resp.data;
   } catch (err) {
     console.error("updateCounselorSettings failed:", err);
+    throw err;
+  }
+};
+
+export const updateCounselorProfile = async (counselorId: number, data: any) => {
+  try {
+    const resp = await api.patch(`/api/counselors/${counselorId}/profile`, data);
+    return resp.data;
+  } catch (err) {
+    console.error("updateCounselorProfile failed:", err);
+    throw err;
+  }
+};
+
+export const uploadProfilePicture = async (counselorId: number, file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("picture", file);
+    const resp = await api.post(`/api/counselors/${counselorId}/upload-picture`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return resp.data;
+  } catch (err) {
+    console.error("uploadProfilePicture failed:", err);
     throw err;
   }
 };

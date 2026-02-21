@@ -31,6 +31,8 @@ const normalizeRow = (r: any) => ({
         ? "active"
         : "inactive"
       : null),
+  profile_picture: r.profile_picture ?? null,
+  bio: r.bio ?? null,
   raw: r,
 });
 
@@ -271,6 +273,44 @@ export const setStatus = async (
   }
 };
 
+export const updateProfile = async (
+  counselorId: number,
+  data: { name?: string; bio?: string; profile_picture?: string }
+): Promise<Counselor | null> => {
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (data.name !== undefined) {
+      fields.push(`name = $${idx++}`);
+      values.push(data.name);
+    }
+    if (data.bio !== undefined) {
+      fields.push(`bio = $${idx++}`);
+      values.push(data.bio);
+    }
+    if (data.profile_picture !== undefined) {
+      fields.push(`profile_picture = $${idx++}`);
+      values.push(data.profile_picture);
+    }
+
+    if (fields.length === 0) return null;
+
+    values.push(counselorId);
+    const query = `UPDATE counselors SET ${fields.join(
+      ", "
+    )}, updated_at = NOW() WHERE counselor_id = $${idx} RETURNING *`;
+
+    const res = await pool.query(query, values);
+    if (res.rows.length === 0) return null;
+    return normalizeRow(res.rows[0]) as Counselor;
+  } catch (err) {
+    console.error("updateProfile error:", err);
+    return null;
+  }
+};
+
 export const deleteCounselor = async (
   counselorId: number
 ): Promise<boolean> => {
@@ -291,6 +331,7 @@ export default {
   createCounselor,
   updateLastActive,
   setStatus,
+  updateProfile,
   delete: deleteCounselor,
   setGoogleOAuthState,
   findCounselorByOAuthState,

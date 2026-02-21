@@ -56,6 +56,7 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 app.use(body_parser_1.default.json());
+app.use("/uploads", express_1.default.static(path_1.default.join(__dirname, "public/uploads")));
 // ---------------------- API routes (register first) ----------------------
 // Only mount a router if it loaded successfully, otherwise warn and skip.
 if (authRouter)

@@ -17,4 +17,6 @@ export interface Counselor {
   work_start_time?: string | null;
   work_end_time?: string | null;
   session_duration?: number; // duration in minutes
+  profile_picture?: string | null;
+  bio?: string | null;
 }

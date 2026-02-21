@@ -11,4 +11,8 @@ const router = express_1.default.Router();
 router.get("/", counselorController_1.CounselorController.getAll);
 // GET /api/counselors/:id
 router.get("/:id", counselorController_1.CounselorController.getById);
+// PATCH /api/counselors/:id/profile
+router.patch("/:id/profile", counselorController_1.CounselorController.updateProfile);
+// POST /api/counselors/:id/upload-picture
+router.post("/:id/upload-picture", counselorController_1.CounselorController.uploadPicture);
 exports.default = router;

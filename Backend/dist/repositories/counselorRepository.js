@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteCounselor = exports.setStatus = exports.updateLastActive = exports.unsetGoogleConnection = exports.storeGoogleTokens = exports.findCounselorByOAuthState = exports.setGoogleOAuthState = exports.createCounselor = exports.findByEmail = exports.getCounselorById = exports.getAllCounselors = void 0;
+exports.deleteCounselor = exports.updateProfile = exports.setStatus = exports.updateLastActive = exports.unsetGoogleConnection = exports.storeGoogleTokens = exports.findCounselorByOAuthState = exports.setGoogleOAuthState = exports.createCounselor = exports.findByEmail = exports.getCounselorById = exports.getAllCounselors = void 0;
 // src/repositories/counselorRepository.ts
 const db_1 = __importDefault(require("../config/db"));
 const normalizeRow = (r) => ({
@@ -32,6 +32,8 @@ const normalizeRow = (r) => ({
                 ? "active"
                 : "inactive"
             : null),
+    profile_picture: r.profile_picture ?? null,
+    bio: r.bio ?? null,
     raw: r,
 });
 const getAllCounselors = async () => {
@@ -244,6 +246,38 @@ const setStatus = async (counselorId, status) => {
     }
 };
 exports.setStatus = setStatus;
+const updateProfile = async (counselorId, data) => {
+    try {
+        const fields = [];
+        const values = [];
+        let idx = 1;
+        if (data.name !== undefined) {
+            fields.push(`name = $${idx++}`);
+            values.push(data.name);
+        }
+        if (data.bio !== undefined) {
+            fields.push(`bio = $${idx++}`);
+            values.push(data.bio);
+        }
+        if (data.profile_picture !== undefined) {
+            fields.push(`profile_picture = $${idx++}`);
+            values.push(data.profile_picture);
+        }
+        if (fields.length === 0)
+            return null;
+        values.push(counselorId);
+        const query = `UPDATE counselors SET ${fields.join(", ")}, updated_at = NOW() WHERE counselor_id = $${idx} RETURNING *`;
+        const res = await db_1.default.query(query, values);
+        if (res.rows.length === 0)
+            return null;
+        return normalizeRow(res.rows[0]);
+    }
+    catch (err) {
+        console.error("updateProfile error:", err);
+        return null;
+    }
+};
+exports.updateProfile = updateProfile;
 const deleteCounselor = async (counselorId) => {
     try {
         const q = `DELETE FROM counselors WHERE counselor_id = $1`;
@@ -263,6 +297,7 @@ exports.default = {
     createCounselor: exports.createCounselor,
     updateLastActive: exports.updateLastActive,
     setStatus: exports.setStatus,
+    updateProfile: exports.updateProfile,
     delete: exports.deleteCounselor,
     setGoogleOAuthState: exports.setGoogleOAuthState,
     findCounselorByOAuthState: exports.findCounselorByOAuthState,
