@@ -442,23 +442,35 @@ const GoogleCalendarService = {
     // Resolve or create student row
     let finalStudentId: number | null = null;
     try {
-      if (typeof student_id !== "undefined" && student_id !== null) {
-        finalStudentId = student_id;
-      } else if (student_email) {
+      // Prioritize lookup by email if available, as the student_id from frontend might be a Roll Number
+      if (student_email) {
         const found = await studentRepository.findByEmail(student_email);
         if (found && found.student_id) {
           finalStudentId = found.student_id;
-        } else {
-          const guestName =
-            (student_email && student_email.split("@")[0]) || "Guest Student";
-          const createdStudent = await studentRepository.create(
-            guestName,
-            student_email
-          );
-          finalStudentId = createdStudent.student_id;
+          console.log(`[GoogleCalendarService] Resolved student_id ${finalStudentId} from email: ${student_email}`);
         }
-      } else {
-        throw new Error("student_id or student_email required");
+      }
+
+      // Fallback to provided student_id ONLY if not resolved by email
+      if (!finalStudentId && typeof student_id !== "undefined" && student_id !== null) {
+        finalStudentId = student_id;
+        console.log(`[GoogleCalendarService] Using provided student_id from payload: ${finalStudentId}`);
+      }
+
+      // If still not found, create guest student
+      if (!finalStudentId && student_email) {
+        const guestName =
+          (student_email && student_email.split("@")[0]) || "Guest Student";
+        const createdStudent = await studentRepository.create(
+          guestName,
+          student_email
+        );
+        finalStudentId = createdStudent.student_id;
+        console.log(`[GoogleCalendarService] Created new guest student ${finalStudentId} for email: ${student_email}`);
+      }
+
+      if (!finalStudentId) {
+        throw new Error("student_id or student_email required and could not be resolved");
       }
     } catch (err) {
       throw new Error("studentRepository failure: " + (err as any).message);
