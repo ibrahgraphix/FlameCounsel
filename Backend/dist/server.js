@@ -8,7 +8,10 @@ const app_1 = __importDefault(require("./app"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const https_1 = __importDefault(require("https"));
 const fs_1 = __importDefault(require("fs"));
+const migration_1 = require("./utils/migration");
 dotenv_1.default.config();
+// Run migrations on startup
+(0, migration_1.runMigrations)();
 // Load SSL certificates
 const sslOptions = {
     cert: fs_1.default.readFileSync("/opt/View/sslcertificates/council_certificate.crt"),

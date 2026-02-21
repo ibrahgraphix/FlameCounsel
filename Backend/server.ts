@@ -3,7 +3,11 @@ import app from "./app";
 import dotenv from "dotenv";
 import https from "https";
 import fs from "fs";
+import { runMigrations } from "./utils/migration";
 dotenv.config();
+
+// Run migrations on startup
+runMigrations();
 
 // Load SSL certificates
 
