@@ -71,29 +71,43 @@ export const bookingService = {
   },
 
   async updateBookingStatus(bookingId: string | number, status: string) {
+    console.log(`[BookingService] Updating status for booking ${bookingId} to ${status}`);
     const updated = await bookingRepository.updateBookingStatus(
       bookingId,
       status
     );
 
+    if (!updated) {
+      console.warn(`[BookingService] Booking ${bookingId} not found for status update.`);
+      return null;
+    }
+
     // If canceled, try to remove from Google Calendar
-    if (
-      updated &&
-      (status === "canceled" || status === "cancelled") &&
-      updated.google_event_id &&
-      updated.counselor_id
-    ) {
-      try {
-        await GoogleCalendarService.deleteEvent(
-          updated.counselor_id,
-          updated.google_event_id
-        );
-      } catch (err) {
-        console.error(
-          "Failed to delete Google Calendar event for booking",
-          bookingId,
-          err
-        );
+    const isCanceled = status === "canceled" || status === "cancelled";
+    
+    if (isCanceled) {
+      console.log(`[BookingService] Booking ${bookingId} canceled. Checking for Google Calendar event...`);
+      if (updated.google_event_id && updated.counselor_id) {
+        console.log(`[BookingService] Found google_event_id: ${updated.google_event_id}. Attempting deletion for counselor: ${updated.counselor_id}`);
+        try {
+          const result = await GoogleCalendarService.deleteEvent(
+            updated.counselor_id,
+            updated.google_event_id
+          );
+          if (result && result.success) {
+            console.log(`[BookingService] Successfully deleted Google Calendar event for booking ${bookingId}`);
+          } else {
+            console.error(`[BookingService] Google Calendar event deletion reported failure:`, result?.error);
+          }
+        } catch (err) {
+          console.error(
+            "[BookingService] Failed to delete Google Calendar event for booking",
+            bookingId,
+            err
+          );
+        }
+      } else {
+        console.warn(`[BookingService] Cannot delete Google Calendar event: google_event_id (${updated.google_event_id}) or counselor_id (${updated.counselor_id}) missing.`);
       }
     }
 

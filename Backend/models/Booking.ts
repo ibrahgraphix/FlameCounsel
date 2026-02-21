@@ -7,6 +7,7 @@ export interface BookingRow {
   year_level?: string | null;
   additional_notes?: string | null;
   status: string;
+  google_event_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
