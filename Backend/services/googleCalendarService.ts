@@ -352,9 +352,6 @@ const GoogleCalendarService = {
     year_level?: string | null;
     additional_notes?: string | null;
   }) => {
-    console.log("**************************************************");
-    console.log(`[GoogleCalendarService] STARTING NEW BOOKING: ${payload.student_email} for ${payload.booking_date} at ${payload.booking_time}`);
-    console.log("**************************************************");
     const {
       student_id,
       student_email,
@@ -494,12 +491,7 @@ const GoogleCalendarService = {
       console.warn(`[GoogleCalendarService] Created booking ${bookingRow.booking_id} WITHOUT google_event_id (googleEvent?.id was missing)`);
     }
 
-    const confirmed = await bookingRepository.updateBookingStatus(
-      bookingRow.booking_id,
-      "confirmed"
-    );
-
-    return { booking: confirmed ?? bookingRow, googleEvent };
+    return { booking: bookingRow, googleEvent };
   },
 
   rescheduleEventForBooking: async (

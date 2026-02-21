@@ -27,10 +27,6 @@ export const bookingRepository = {
       additionalNotes ?? null,
       googleEventId ?? null,
     ];
-    console.log("--------------------------------------------------");
-    console.log(`[BookingRepository] INSERTING NEW BOOKING for counselor: ${counselorId}, date: ${bookingDate}`);
-    console.log(`[BookingRepository] createBooking params: ${JSON.stringify(params)}`);
-    console.log("--------------------------------------------------");
     const res = client
       ? await client.query(q, params)
       : await pool.query(q, params);
