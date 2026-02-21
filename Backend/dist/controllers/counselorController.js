@@ -95,6 +95,14 @@ exports.CounselorController = {
             try {
                 // Construct the URL/path to store in DB
                 const profilePicturePath = `/uploads/profile_pictures/${mReq.file.filename}`;
+                // Get current picture to delete it if exists
+                const current = await (0, counselorRepository_1.getCounselorById)(id);
+                if (current && current.profile_picture) {
+                    const oldPath = path_1.default.join(__dirname, "../public", current.profile_picture);
+                    if (fs_1.default.existsSync(oldPath)) {
+                        fs_1.default.unlinkSync(oldPath);
+                    }
+                }
                 const updated = await (0, counselorRepository_1.updateProfile)(id, { profile_picture: profilePicturePath });
                 if (!updated) {
                     return res.status(404).json({ success: false, error: "Counselor not found" });
@@ -106,5 +114,27 @@ exports.CounselorController = {
                 return res.status(500).json({ success: false, error: "Database update failed" });
             }
         });
+    },
+    async deletePicture(req, res) {
+        try {
+            const id = Number(req.params.id);
+            if (!id)
+                return res.status(400).json({ success: false, error: "Invalid id" });
+            const c = await (0, counselorRepository_1.getCounselorById)(id);
+            if (!c)
+                return res.status(404).json({ success: false, error: "Not found" });
+            if (c.profile_picture) {
+                const fullPath = path_1.default.join(__dirname, "../public", c.profile_picture);
+                if (fs_1.default.existsSync(fullPath)) {
+                    fs_1.default.unlinkSync(fullPath);
+                }
+            }
+            const updated = await (0, counselorRepository_1.updateProfile)(id, { profile_picture: "" }); // or null, but repo uses string
+            return res.json({ success: true, counselor: updated });
+        }
+        catch (err) {
+            console.error("CounselorController.deletePicture error:", err);
+            return res.status(500).json({ success: false, error: "Server error" });
+        }
     },
 };

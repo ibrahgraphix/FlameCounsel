@@ -16,4 +16,7 @@ router.patch("/:id/profile", CounselorController.updateProfile);
 // POST /api/counselors/:id/upload-picture
 router.post("/:id/upload-picture", CounselorController.uploadPicture);
 
+// DELETE /api/counselors/:id/picture
+router.delete("/:id/picture", CounselorController.deletePicture);
+
 export default router;

@@ -167,6 +167,16 @@ export const uploadProfilePicture = async (counselorId: number, file: File) => {
   }
 };
 
+export const deleteProfilePicture = async (counselorId: number) => {
+  try {
+    const resp = await api.delete(`/api/counselors/${counselorId}/picture`);
+    return resp.data;
+  } catch (err) {
+    console.error("deleteProfilePicture failed:", err);
+    throw err;
+  }
+};
+
 /**
  * getAvailableSlots
  * Calls the backend Google Calendar availability endpoint and returns an array of string labels

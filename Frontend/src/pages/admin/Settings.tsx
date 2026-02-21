@@ -15,6 +15,7 @@ import api, {
   updateCounselorSettings,
   updateCounselorProfile,
   uploadProfilePicture,
+  deleteProfilePicture,
 } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,7 +70,7 @@ const SettingsPage = () => {
   useEffect(() => {
     const fetchCounselor = async () => {
       try {
-        if (user && user.role?.toLowerCase() === "counselor") {
+        if (user && (user.role?.toLowerCase() === "counselor" || user.role?.toLowerCase() === "admin")) {
           setCounselor(user);
           setProfileName(user.name || "");
           setProfileBio(user.bio || "");
@@ -143,11 +144,13 @@ const SettingsPage = () => {
 
     setIsSaving(true);
     try {
-      // Save settings (availability & duration)
-      await updateCounselorSettings(counselorId, {
-        availability,
-        sessionDuration,
-      });
+      // Save settings (availability & duration) - Only for counselors
+      if (user?.role?.toLowerCase() === "counselor") {
+        await updateCounselorSettings(counselorId, {
+          availability,
+          sessionDuration,
+        });
+      }
 
       // Save profile (name & bio)
       await updateCounselorProfile(counselorId, {
@@ -171,6 +174,30 @@ const SettingsPage = () => {
       toast.success("Settings saved successfully!");
     } catch (err: any) {
       toast.error("Failed to save settings: " + (err?.message ?? err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemovePicture = async () => {
+    if (!counselorId) return;
+    
+    // If it's just a preview, clear it
+    if (selectedFile) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to remove your profile picture?")) return;
+
+    setIsSaving(true);
+    try {
+      await deleteProfilePicture(counselorId);
+      setProfilePicture(null);
+      toast.success("Profile picture removed.");
+    } catch (err: any) {
+      toast.error("Failed to remove picture: " + (err?.message ?? err));
     } finally {
       setIsSaving(false);
     }
@@ -235,9 +262,11 @@ const SettingsPage = () => {
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <UserIcon className="h-4 w-4" /> Profile
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" /> Calendar & Availability
-          </TabsTrigger>
+          {user?.role?.toLowerCase() === "counselor" && (
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" /> Calendar & Availability
+            </TabsTrigger>
+          )}
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <span className="h-4 w-4">🔔</span> Notifications
           </TabsTrigger>
@@ -284,6 +313,16 @@ const SettingsPage = () => {
                     onChange={handleFileChange}
                   />
                 </div>
+                {(previewUrl || profilePicture) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={handleRemovePicture}
+                  >
+                    Remove Picture
+                  </Button>
+                )}
                 <p className="text-xs text-slate-500 text-center">
                   Click to upload a profile picture.<br/>Only JPEG, PNG or WebP (max 5MB).
                 </p>
@@ -321,7 +360,9 @@ const SettingsPage = () => {
                     }`}
                   />
                   <p className="text-xs text-slate-500 italic">
-                    This bio will be shown to students when they book an appointment.
+                    {user?.role?.toLowerCase() === "admin" 
+                      ? "This bio is for your internal profile." 
+                      : "This bio will be shown to students when they book an appointment."}
                   </p>
                 </div>
               </CardContent>
@@ -330,7 +371,8 @@ const SettingsPage = () => {
         </TabsContent>
 
         {/* --- Calendar Tab --- */}
-        <TabsContent value="calendar" className="space-y-6">
+        {user?.role?.toLowerCase() === "counselor" && (
+          <TabsContent value="calendar" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Session Duration */}
             <Card className="lg:col-span-1 h-fit">
@@ -443,6 +485,7 @@ const SettingsPage = () => {
             </Card>
           </div>
         </TabsContent>
+        )}
 
         {/* --- Notifications Tab --- */}
         <TabsContent value="notifications">

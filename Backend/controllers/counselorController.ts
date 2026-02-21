@@ -105,6 +105,15 @@ export const CounselorController = {
         // Construct the URL/path to store in DB
         const profilePicturePath = `/uploads/profile_pictures/${mReq.file.filename}`;
 
+        // Get current picture to delete it if exists
+        const current = await getCounselorById(id);
+        if (current && current.profile_picture) {
+          const oldPath = path.join(__dirname, "../public", current.profile_picture);
+          if (fs.existsSync(oldPath)) {
+            fs.unlinkSync(oldPath);
+          }
+        }
+
         const updated = await updateProfile(id, { profile_picture: profilePicturePath });
         if (!updated) {
           return res.status(404).json({ success: false, error: "Counselor not found" });
@@ -116,5 +125,28 @@ export const CounselorController = {
         return res.status(500).json({ success: false, error: "Database update failed" });
       }
     });
+  },
+
+  async deletePicture(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      if (!id) return res.status(400).json({ success: false, error: "Invalid id" });
+
+      const c = await getCounselorById(id);
+      if (!c) return res.status(404).json({ success: false, error: "Not found" });
+
+      if (c.profile_picture) {
+        const fullPath = path.join(__dirname, "../public", c.profile_picture);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+
+      const updated = await updateProfile(id, { profile_picture: "" }); // or null, but repo uses string
+      return res.json({ success: true, counselor: updated });
+    } catch (err: any) {
+      console.error("CounselorController.deletePicture error:", err);
+      return res.status(500).json({ success: false, error: "Server error" });
+    }
   },
 };
