@@ -52,6 +52,7 @@ exports.bookingService = {
         const isCanceled = status === "canceled" || status === "cancelled";
         if (isCanceled) {
             console.log(`[BookingService] Booking ${bookingId} canceled. Checking for Google Calendar event...`);
+            console.log(`[BookingService] Updated object from DB: ${JSON.stringify(updated)}`);
             if (updated.google_event_id && updated.counselor_id) {
                 console.log(`[BookingService] Found google_event_id: ${updated.google_event_id}. Attempting deletion for counselor: ${updated.counselor_id}`);
                 try {

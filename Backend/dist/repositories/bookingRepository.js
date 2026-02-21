@@ -22,9 +22,11 @@ exports.bookingRepository = {
             additionalNotes ?? null,
             googleEventId ?? null,
         ];
+        console.log(`[BookingRepository] createBooking params: ${JSON.stringify(params)}`);
         const res = client
             ? await client.query(q, params)
             : await db_1.default.query(q, params);
+        console.log(`[BookingRepository] createBooking inserted row: ${JSON.stringify(res.rows[0])}`);
         return res.rows[0];
     },
     async getBookingsByStudentEmail(email) {

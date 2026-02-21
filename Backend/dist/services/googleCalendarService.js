@@ -324,6 +324,7 @@ const GoogleCalendarService = {
             throw new Error("Google event creation failed: " + (e?.message ?? e));
         }
         const googleEvent = created?.data;
+        console.log(`[GoogleCalendarService] Created Google Event: ${JSON.stringify(googleEvent)}`);
         // Resolve or create student row
         let finalStudentId = null;
         try {
