@@ -16,4 +16,5 @@ export interface Counselor {
   timezone?: string | null;
   work_start_time?: string | null;
   work_end_time?: string | null;
+  session_duration?: number; // duration in minutes
 }

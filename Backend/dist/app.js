@@ -23,6 +23,7 @@ let adminAnalyticsRouter = null;
 let googleCalendarRoutes = null;
 let studentProxy = null;
 let gamesRouter = null;
+let counselorSettingsRouter = null;
 function tryRequire(p) {
     try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -47,6 +48,7 @@ adminAnalyticsRouter = tryRequire("./routes/adminAnalytics");
 googleCalendarRoutes = tryRequire("./routes/googleCalendarRoutes");
 studentProxy = tryRequire("./routes/studentProxy");
 gamesRouter = tryRequire("./routes/games");
+counselorSettingsRouter = tryRequire("./routes/counselorSettingsRoutes");
 // allow cross-origin from your front-end with credentials
 const CLIENT_ORIGIN = process.env.CLIENT_URL || "https://flamestudentcouncil.in:7070";
 app.use((0, cors_1.default)({
@@ -74,6 +76,8 @@ if (adminAnalyticsRouter)
     app.use("/api/admin/analytics", adminAnalyticsRouter);
 if (gamesRouter)
     app.use("/api/games", gamesRouter);
+if (counselorSettingsRouter)
+    app.use("/api/counselors/settings", counselorSettingsRouter);
 // Google calendar routes (mounted on two endpoints historically for compatibility)
 if (googleCalendarRoutes) {
     app.use("/api/google-calendar", googleCalendarRoutes);

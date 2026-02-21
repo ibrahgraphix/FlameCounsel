@@ -115,6 +115,27 @@ export const getCounselorById = async (id: number) => {
 export const getTherapists = getCounselors;
 export const getTherapistById = getCounselorById;
 
+// --------------------- Counselor Settings ---------------------
+export const getCounselorSettings = async (counselorId: number) => {
+  try {
+    const resp = await api.get(`/api/counselors/settings/${counselorId}`);
+    return resp.data;
+  } catch (err) {
+    console.error("getCounselorSettings failed:", err);
+    return null;
+  }
+};
+
+export const updateCounselorSettings = async (counselorId: number, settings: any) => {
+  try {
+    const resp = await api.post(`/api/counselors/settings/${counselorId}`, settings);
+    return resp.data;
+  } catch (err) {
+    console.error("updateCounselorSettings failed:", err);
+    throw err;
+  }
+};
+
 /**
  * getAvailableSlots
  * Calls the backend Google Calendar availability endpoint and returns an array of string labels

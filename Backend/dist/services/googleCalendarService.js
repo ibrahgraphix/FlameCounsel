@@ -12,6 +12,7 @@ const studentRepository_1 = require("../repositories/studentRepository");
 // @ts-ignore: avoid immediate build error if luxon types are not installed
 const luxon_1 = require("luxon");
 const timeUtils_1 = require("../utils/timeUtils");
+const counselorSettingsRepository_1 = __importDefault(require("../repositories/counselorSettingsRepository"));
 // import canonical scopes from authService so we don't duplicate scope definitions
 const authService_1 = require("./authService");
 dotenv_1.default.config();
@@ -244,29 +245,42 @@ const GoogleCalendarService = {
             const e = luxon_1.DateTime.fromISO(b.end).setZone(timezone).toISO() ?? "";
             return { start: s, end: e };
         });
-        const workingStart = counselor.work_start_time ?? "09:00";
-        const workingEnd = counselor.work_end_time ?? "17:00";
-        const slots = (0, timeUtils_1.generateTimeSlots)(dateStr, workingStart, workingEnd, durationMinutes, timezone, busyRanges);
+        // Fetch counselor settings (availability and duration)
+        const [availability, dbDuration] = await Promise.all([
+            counselorSettingsRepository_1.default.getCounselorAvailability(counselorId),
+            counselorSettingsRepository_1.default.getSessionDuration(counselorId)
+        ]);
+        // Determine working hours for the specific day
+        const dayOfWeek = luxon_1.DateTime.fromISO(dateStr).weekday % 7; // Sunday = 0, Monday = 1...
+        const daySetting = availability.find(a => a.day_of_week === dayOfWeek);
+        if (daySetting && !daySetting.is_enabled) {
+            return { connected: true, slots: [] }; // Not working this day
+        }
+        const workingStart = daySetting?.start_time ?? counselor.work_start_time ?? "09:00";
+        const workingEnd = daySetting?.end_time ?? counselor.work_end_time ?? "17:00";
+        const finalDuration = dbDuration || durationMinutes;
+        const slots = (0, timeUtils_1.generateTimeSlots)(dateStr, workingStart, workingEnd, finalDuration, timezone, busyRanges);
         return { connected: true, slots };
     },
     /**
      * bookSession default duration changed to 60 minutes
      */
     bookSession: async (payload) => {
-        const { student_id, student_email, counselor_id, booking_date, booking_time, 
-        // default to 60 minutes if not provided
-        duration = 60, summary, description, timezone, year_level, additional_notes, } = payload;
+        const { student_id, student_email, counselor_id, booking_date, booking_time, summary, description, timezone, year_level, additional_notes, } = payload;
         if (!counselor_id || !booking_date || !booking_time) {
             throw new Error("counselor_id, booking_date and booking_time are required");
         }
         // getAuthorizedCalendarClient will throw GoogleAuthError if auth is broken
         const { calendar, counselor } = await GoogleCalendarService.getAuthorizedCalendarClient(counselor_id);
+        // Fetch duration from DB
+        const dbDuration = await counselorSettingsRepository_1.default.getSessionDuration(counselor_id);
+        const finalDuration = payload.duration || dbDuration || 60;
         const tz = timezone ?? counselor.timezone ?? DEFAULT_TIMEZONE;
         const startDT = parseBookingStartDateTime(booking_date, booking_time, tz);
         if (!startDT || !startDT.isValid) {
             throw new Error("Invalid booking_time format, expected HH:mm or HH:mm:ss or common human formats (e.g. '9:00 AM' or '09:00-09:30')");
         }
-        const endDT = startDT.plus({ minutes: duration });
+        const endDT = startDT.plus({ minutes: finalDuration });
         // Check freebusy for conflicts
         let fbRes;
         try {

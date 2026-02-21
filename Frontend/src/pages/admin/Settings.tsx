@@ -5,15 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, Loader2 } from "lucide-react";
+import { Settings, Loader2, Save, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { useDarkMode } from "@/contexts/Darkmode";
 import { toast } from "@/components/ui/sonner";
 import api, {
   getCounselorById,
   getCounselors,
-  getCounselorCalendar,
+  getCounselorSettings,
+  updateCounselorSettings,
 } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const DAYS = [
+  { label: "Sunday", value: 0 },
+  { label: "Monday", value: 1 },
+  { label: "Tuesday", value: 2 },
+  { label: "Wednesday", value: 3 },
+  { label: "Thursday", value: 4 },
+  { label: "Friday", value: 5 },
+  { label: "Saturday", value: 6 },
+];
 
 const SettingsPage = () => {
   const [emailNotif, setEmailNotif] = useState(true);
@@ -22,13 +35,27 @@ const SettingsPage = () => {
   const { user } = useAuth();
 
   const [counselor, setCounselor] = useState<any>(null);
-  const [checkingConnect, setCheckingConnect] = useState(false);
-  const [workingHours, setWorkingHours] = useState<string>("9:00 AM - 5:00 PM");
-  const [availableDays, setAvailableDays] = useState<string>("Mon - Fri");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // New settings state
+  const [availability, setAvailability] = useState<any[]>(
+    DAYS.map((d) => ({
+      day_of_week: d.value,
+      start_time: "09:00:00",
+      end_time: "17:00:00",
+      is_enabled: d.value !== 0 && d.value !== 6, // Default Mon-Fri
+    }))
+  );
+  const [sessionDuration, setSessionDuration] = useState<number>(60);
 
   // theme colors
   const PRIMARY = "#1e3a8a";
   const GRADIENT = "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)";
+
+  const counselorId =
+    Number(counselor?.counselor_id ?? counselor?.id ?? counselor?.raw?.id) ||
+    null;
 
   // Resolve counselor from current user or fallback
   useEffect(() => {
@@ -47,101 +74,248 @@ const SettingsPage = () => {
     fetchCounselor();
   }, [user]);
 
-  // Load working hours (placeholder for now; could come from backend or Google)
-  const loadWorkingHours = async () => {
-    try {
-      const data = await getCounselorCalendar();
-      // In real case: parse Google Calendar free/busy data or stored preferences
-      if (data?.workingHours) setWorkingHours(data.workingHours);
-      if (data?.availableDays) setAvailableDays(data.availableDays);
-    } catch (err) {
-      console.warn("Could not load working hours:", err);
-    }
-  };
-
+  // Load backend settings
   useEffect(() => {
-    loadWorkingHours();
-  }, []);
+    if (counselorId) {
+      const loadSettings = async () => {
+        setIsLoading(true);
+        try {
+          const data = await getCounselorSettings(counselorId);
+          if (data) {
+            if (data.availability && data.availability.length > 0) {
+              // Merge with default DAYS to ensure all days are present
+              const merged = DAYS.map((d) => {
+                const found = data.availability.find(
+                  (a: any) => a.day_of_week === d.value
+                );
+                return (
+                  found || {
+                    day_of_week: d.value,
+                    start_time: "09:00:00",
+                    end_time: "17:00:00",
+                    is_enabled: false,
+                  }
+                );
+              });
+              setAvailability(merged);
+            }
+            if (data.sessionDuration) setSessionDuration(data.sessionDuration);
+          }
+        } catch (err) {
+          console.warn("Could not load counselor settings:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadSettings();
+    }
+  }, [counselorId]);
 
-  /** --- GOOGLE CALENDAR CONNECT LOGIC (same as Calendar.tsx) --- */
-  const handleConnectGoogle = async () => {
-    let counselorId =
-      Number(counselor?.counselor_id ?? counselor?.id ?? counselor?.raw?.id) ||
-      null;
-
+  const handleSaveSettings = async () => {
     if (!counselorId) {
-      toast.error(
-        "Counselor ID not found. Please reload or select a counselor."
-      );
+      toast.error("Counselor not identified.");
       return;
     }
 
+    setIsSaving(true);
     try {
-      setCheckingConnect(true);
-      const resp = await api.get("/api/google-calendar/auth-url", {
-        params: { counselorId },
+      await updateCounselorSettings(counselorId, {
+        availability,
+        sessionDuration,
       });
-      const url = resp?.data?.url ?? resp?.data?.authUrl ?? resp?.data;
-      if (!url) {
-        toast.error("No Google authorization URL returned by server.");
-        return;
-      }
-
-      window.open(String(url), "_blank", "noopener,noreferrer");
-      toast.info(
-        "Google authorization tab opened. Complete consent and return here."
-      );
-
-      // Poll for confirmation
-      const attempts = 8;
-      for (let i = 0; i < attempts; i++) {
-        await new Promise((r) => setTimeout(r, 3000));
-        try {
-          const refreshed = await getCounselorById(counselorId);
-          if (
-            refreshed &&
-            (refreshed.raw?.google_connected || refreshed.google_connected)
-          ) {
-            setCounselor(refreshed);
-            toast.success("Google Calendar connected successfully!");
-            await loadWorkingHours();
-            return;
-          }
-        } catch (e) {}
-      }
-      toast.warn("No confirmation yet. Try reloading or reconnecting.");
+      toast.success("Settings saved successfully!");
     } catch (err: any) {
-      console.error("Google connect failed:", err);
-      toast.error(
-        "Failed to initiate Google connect: " + (err?.message ?? err)
-      );
+      toast.error("Failed to save settings: " + (err?.message ?? err));
     } finally {
-      setCheckingConnect(false);
+      setIsSaving(false);
     }
   };
+
+  const toggleDay = (dayIndex: number) => {
+    setAvailability((prev) =>
+      prev.map((a) =>
+        a.day_of_week === dayIndex ? { ...a, is_enabled: !a.is_enabled } : a
+      )
+    );
+  };
+
+  const updateTime = (dayIndex: number, field: "start_time" | "end_time", value: string) => {
+    setAvailability((prev) =>
+      prev.map((a) =>
+        a.day_of_week === dayIndex ? { ...a, [field]: value.length === 5 ? `${value}:00` : value } : a
+      )
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="animate-spin h-8 w-8 text-mindease-primary" />
+      </div>
+    );
+  }
 
   return (
     <div
       className="p-6 space-y-6 min-h-screen"
-      style={{ background: darkMode ? "#0f1724" : "white" }}
+      style={{ background: darkMode ? "#0f1724" : "#f8fafc" }}
     >
-      {/* Page Title */}
-      <div className="flex items-center gap-2">
-        <Settings className="h-6 w-6 text-mindease-primary" />
-        <h1
-          className="text-2xl font-bold tracking-tight"
-          style={{ color: darkMode ? "#e6eefc" : undefined }}
+      {/* Page Title & Save Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Settings className="h-6 w-6 text-mindease-primary" />
+          <h1
+            className="text-2xl font-bold tracking-tight"
+            style={{ color: darkMode ? "#e6eefc" : undefined }}
+          >
+            Settings
+          </h1>
+        </div>
+        <Button
+          onClick={handleSaveSettings}
+          disabled={isSaving}
+          className="text-white font-semibold flex items-center gap-2"
+          style={{
+            background: GRADIENT,
+            boxShadow: "0 4px 12px rgba(30,58,138,0.2)",
+          }}
         >
-          Settings
-        </h1>
+          {isSaving ? (
+            <Loader2 className="animate-spin h-4 w-4" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          Save Changes
+        </Button>
       </div>
 
-      <Tabs defaultValue="notifications" className="w-full">
-        <TabsList>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+      <Tabs defaultValue="calendar" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="calendar" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" /> Calendar & Availability
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <span className="h-4 w-4">🔔</span> Notifications
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="flex items-center gap-2">
+            <span className="h-4 w-4">⚙️</span> Preferences
+          </TabsTrigger>
         </TabsList>
+
+        {/* --- Calendar Tab --- */}
+        <TabsContent value="calendar" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Session Duration */}
+            <Card className="lg:col-span-1 h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  Session Duration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Duration of each session (minutes)</Label>
+                  <Select
+                    value={String(sessionDuration)}
+                    onValueChange={(v) => setSessionDuration(Number(v))}
+                  >
+                    <SelectTrigger className={darkMode ? "bg-slate-800 border-slate-700" : ""}>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">15 Minutes</SelectItem>
+                      <SelectItem value="30">30 Minutes</SelectItem>
+                      <SelectItem value="45">45 Minutes</SelectItem>
+                      <SelectItem value="60">1 Hour</SelectItem>
+                      <SelectItem value="90">1.5 Hours</SelectItem>
+                      <SelectItem value="120">2 Hours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 italic">
+                    Appointments will be split into slots of this duration.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Working Hours per Day */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-blue-500" />
+                  Weekly Availability
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {DAYS.map((day) => {
+                    const setting = availability.find(
+                      (a) => a.day_of_week === day.value
+                    );
+                    return (
+                      <div
+                        key={day.value}
+                        className={`flex flex-wrap items-center justify-between p-3 rounded-lg border ${
+                          setting?.is_enabled
+                            ? darkMode
+                              ? "bg-slate-800/50 border-slate-700"
+                              : "bg-blue-50/50 border-blue-100"
+                            : darkMode
+                            ? "bg-slate-900 border-slate-800 opacity-50"
+                            : "bg-slate-50 border-slate-200 opacity-60"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4 min-w-[120px]">
+                          <Checkbox
+                            id={`day-${day.value}`}
+                            checked={setting?.is_enabled}
+                            onCheckedChange={() => toggleDay(day.value)}
+                          />
+                          <Label
+                            htmlFor={`day-${day.value}`}
+                            className="font-semibold cursor-pointer"
+                          >
+                            {day.label}
+                          </Label>
+                        </div>
+
+                        {setting?.is_enabled ? (
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500 uppercase font-bold">From</span>
+                              <Input
+                                type="time"
+                                className="w-32 h-9"
+                                value={setting.start_time.slice(0, 5)}
+                                onChange={(e) =>
+                                  updateTime(day.value, "start_time", e.target.value)
+                                }
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500 uppercase font-bold">To</span>
+                              <Input
+                                type="time"
+                                className="w-32 h-9"
+                                value={setting.end_time.slice(0, 5)}
+                                onChange={(e) =>
+                                  updateTime(day.value, "end_time", e.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium italic text-slate-400">Unavailable</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         {/* --- Notifications Tab --- */}
         <TabsContent value="notifications">
@@ -162,72 +336,6 @@ const SettingsPage = () => {
                 </Label>
                 <Switch checked={smsNotif} onCheckedChange={setSmsNotif} />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* --- Calendar Tab --- */}
-        <TabsContent value="calendar">
-          <Card>
-            <CardHeader>
-              <CardTitle>Calendar & Availability</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label style={{ color: darkMode ? "#cbd5e1" : undefined }}>
-                  Working Hours
-                </Label>
-                <Input
-                  type="text"
-                  value={workingHours}
-                  readOnly
-                  style={{ opacity: 0.8 }}
-                />
-              </div>
-
-              <div>
-                <Label style={{ color: darkMode ? "#cbd5e1" : undefined }}>
-                  Available Days
-                </Label>
-                <Input
-                  type="text"
-                  value={availableDays}
-                  readOnly
-                  style={{ opacity: 0.8 }}
-                />
-              </div>
-
-              {/* Sync Button */}
-              {!counselor?.google_connected &&
-              !counselor?.raw?.google_connected ? (
-                <Button
-                  onClick={handleConnectGoogle}
-                  disabled={checkingConnect}
-                  className="text-white font-semibold"
-                  style={{
-                    background: GRADIENT,
-                    boxShadow: "0 6px 18px rgba(30,58,138,0.12)",
-                  }}
-                >
-                  {checkingConnect ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="animate-spin h-4 w-4" /> Connecting…
-                    </span>
-                  ) : (
-                    "Sync with Google Calendar"
-                  )}
-                </Button>
-              ) : (
-                <div
-                  className="px-3 py-1 rounded-md font-medium text-sm"
-                  style={{
-                    background: "rgba(59,130,246,0.12)",
-                    color: PRIMARY,
-                  }}
-                >
-                  Google Calendar connected
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
