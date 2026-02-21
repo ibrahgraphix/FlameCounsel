@@ -11,7 +11,7 @@ exports.bookingRepository = {
         const q = `INSERT INTO bookings
        (student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,'pending', NOW(), NOW())
-       RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at`;
+       RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id`;
         const params = [
             // allow null for guest bookings
             studentId,
@@ -28,7 +28,7 @@ exports.bookingRepository = {
     },
     async getBookingsByStudentEmail(email) {
         const res = await db_1.default.query(`SELECT b.booking_id, b.student_id, b.counselor_id, b.booking_date, b.booking_time,
-              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at,
+              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at, b.google_event_id,
               c.counselor_id AS c_counselor_id, c.name as counselor_name, c.email as counselor_email,
               s.student_id AS s_student_id, s.name AS student_name, s.email AS student_email
        FROM bookings b
@@ -40,7 +40,7 @@ exports.bookingRepository = {
     },
     async getBookingsByCounselorId(counselorId) {
         const res = await db_1.default.query(`SELECT b.booking_id, b.student_id, b.counselor_id, b.booking_date, b.booking_time,
-              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at,
+              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at, b.google_event_id,
               s.student_id AS s_student_id, s.name AS student_name, s.email AS student_email
        FROM bookings b
        JOIN students s ON b.student_id = s.student_id
@@ -50,7 +50,7 @@ exports.bookingRepository = {
     },
     async getAllBookings() {
         const res = await db_1.default.query(`SELECT b.booking_id, b.student_id, b.counselor_id, b.booking_date, b.booking_time,
-              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at,
+              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at, b.google_event_id,
               s.student_id AS s_student_id, s.name AS student_name, s.email AS student_email,
               c.counselor_id AS c_counselor_id, c.name AS counselor_name, c.email AS counselor_email
        FROM bookings b
@@ -81,7 +81,7 @@ exports.bookingRepository = {
         const res = await db_1.default.query(`UPDATE bookings
        SET booking_date = $1, booking_time = $2, updated_at = NOW()
        WHERE booking_id = $3
-       RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at`, [bookingDate, bookingTime, bookingId]);
+       RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id`, [bookingDate, bookingTime, bookingId]);
         if (!res.rows || res.rows.length === 0)
             return null;
         return res.rows[0];

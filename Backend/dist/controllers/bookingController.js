@@ -330,38 +330,36 @@ exports.BookingController = {
                 // if you reintroduce it restore that behavior.
                 return res.json({ success: true, booking: updated });
             }
-            // Student owner: allow cancelling their own booking only
-            const userEmail = (user.email ?? "").toString();
-            if (userEmail) {
-                try {
-                    const studentBookings = await bookingService_1.default.getBookingsByStudentEmail(userEmail);
-                    const owned = (studentBookings || []).find((b) => String(b.booking_id) === String(bookingId));
-                    if (owned) {
-                        if (normalized === "canceled") {
-                            const updated = await bookingService_1.default.updateBookingStatus(bookingId, normalized);
-                            if (!updated) {
-                                return res
-                                    .status(404)
-                                    .json({ success: false, error: "Booking not found" });
-                            }
-                            // Previously would delete Google event here; omitted.
-                            return res.json({ success: true, booking: updated });
-                        }
-                        else {
-                            return res
-                                .status(403)
-                                .json({ error: "Students may only cancel their bookings" });
-                        }
-                    }
+            // Student owner logic
+            const userEmail = user.email ? String(user.email) : null;
+            const userRole = user.role ? String(user.role).toLowerCase() : null;
+            // If it's a student or a guest (who won't have a role, only an email), they can only cancel
+            if (userRole === "student" || (!userRole && userEmail)) {
+                if (normalized !== "canceled") {
+                    return res
+                        .status(403)
+                        .json({ error: "Students may only cancel their bookings" });
                 }
-                catch (err) {
-                    console.error("Error while checking student ownership in patchBookingStatus:", err);
+                const studentBookings = await bookingService_1.default.getBookingsByStudentEmail(userEmail);
+                const owned = (studentBookings || []).find((b) => String(b.booking_id) === String(bookingId));
+                if (!owned) {
+                    return res.status(403).json({
+                        error: "You do not have permission to cancel this booking",
+                    });
                 }
+                const updated = await bookingService_1.default.updateBookingStatus(bookingId, normalized);
+                if (!updated) {
+                    return res
+                        .status(404)
+                        .json({ success: false, error: "Booking not found" });
+                }
+                return res.json({ success: true, booking: updated });
             }
             // Counselors: verify the booking belongs to them
             const counselorId = Number(user.counselor_id ?? user.id ?? user.counselorId ?? user.user_id);
-            if (!counselorId)
+            if (!counselorId || userRole !== "counselor") {
                 return res.status(403).json({ error: "Forbidden" });
+            }
             const myBookings = await bookingService_1.default.getBookingsByCounselorId(counselorId);
             const found = myBookings.find((b) => String(b.booking_id) === String(bookingId));
             if (!found)
@@ -372,7 +370,6 @@ exports.BookingController = {
                     .status(404)
                     .json({ success: false, error: "Booking not found" });
             }
-            // Previously would trigger Google event deletion if canceled.
             return res.json({ success: true, booking: updated });
         }
         catch (err) {
