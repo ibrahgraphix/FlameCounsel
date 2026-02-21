@@ -16,7 +16,8 @@ interface MulterRequest extends Request {
 // Multer configuration for profile picture upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, "../public/uploads/profile_pictures");
+    const rootUploads = path.join(process.cwd(), "public/uploads");
+    const uploadPath = path.join(rootUploads, "profile_pictures");
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -108,7 +109,9 @@ export const CounselorController = {
         // Get current picture to delete it if exists
         const current = await getCounselorById(id);
         if (current && current.profile_picture) {
-          const oldPath = path.join(__dirname, "../public", current.profile_picture);
+          // Robust path resolution for deletion
+          const relativePath = current.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
+          const oldPath = path.join(process.cwd(), "public/uploads", relativePath);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
           }
@@ -136,7 +139,8 @@ export const CounselorController = {
       if (!c) return res.status(404).json({ success: false, error: "Not found" });
 
       if (c.profile_picture) {
-        const fullPath = path.join(__dirname, "../public", c.profile_picture);
+        const relativePath = c.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
+        const fullPath = path.join(process.cwd(), "public/uploads", relativePath);
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath);
         }

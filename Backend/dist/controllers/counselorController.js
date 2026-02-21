@@ -11,7 +11,8 @@ const counselorRepository_1 = require("../repositories/counselorRepository");
 // Multer configuration for profile picture upload
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
-        const uploadPath = path_1.default.join(__dirname, "../public/uploads/profile_pictures");
+        const rootUploads = path_1.default.join(process.cwd(), "public/uploads");
+        const uploadPath = path_1.default.join(rootUploads, "profile_pictures");
         if (!fs_1.default.existsSync(uploadPath)) {
             fs_1.default.mkdirSync(uploadPath, { recursive: true });
         }
@@ -98,7 +99,9 @@ exports.CounselorController = {
                 // Get current picture to delete it if exists
                 const current = await (0, counselorRepository_1.getCounselorById)(id);
                 if (current && current.profile_picture) {
-                    const oldPath = path_1.default.join(__dirname, "../public", current.profile_picture);
+                    // Robust path resolution for deletion
+                    const relativePath = current.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
+                    const oldPath = path_1.default.join(process.cwd(), "public/uploads", relativePath);
                     if (fs_1.default.existsSync(oldPath)) {
                         fs_1.default.unlinkSync(oldPath);
                     }
@@ -124,7 +127,8 @@ exports.CounselorController = {
             if (!c)
                 return res.status(404).json({ success: false, error: "Not found" });
             if (c.profile_picture) {
-                const fullPath = path_1.default.join(__dirname, "../public", c.profile_picture);
+                const relativePath = c.profile_picture.replace(/^\//, "").replace(/^uploads\//, "");
+                const fullPath = path_1.default.join(process.cwd(), "public/uploads", relativePath);
                 if (fs_1.default.existsSync(fullPath)) {
                     fs_1.default.unlinkSync(fullPath);
                 }

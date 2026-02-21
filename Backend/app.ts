@@ -66,20 +66,22 @@ app.use(
 
 app.use(bodyParser.json());
 
-// Resolve public/uploads path robustly for both dev (src) and prod (dist)
-const uploadsPath = [
-  path.join(__dirname, "public/uploads"),
-  path.join(__dirname, "../public/uploads"),
-  path.join(process.cwd(), "public/uploads"),
-  path.join(process.cwd(), "Backend/public/uploads"),
-].find((p) => fs.existsSync(p));
+// Resolve public/uploads path robustly relative to project root
+// We use process.cwd() as the base to remain consistent regardless of src/ vs dist/
+const rootUploads = path.join(process.cwd(), "public/uploads");
+const profilePicsDir = path.join(rootUploads, "profile_pictures");
 
-if (uploadsPath) {
-  console.log(`[app] Serving uploads from: ${uploadsPath}`);
-  app.use("/uploads", express.static(uploadsPath));
-} else {
-  console.warn("[app] Could not locate public/uploads directory!");
-}
+// Ensure directories exist
+[rootUploads, profilePicsDir].forEach(p => {
+  if (!fs.existsSync(p)) {
+    fs.mkdirSync(p, { recursive: true });
+    console.log(`[app] Created directory: ${p}`);
+  }
+});
+
+console.log(`[app] Serving uploads from: ${rootUploads}`);
+app.use("/uploads", express.static(rootUploads));
+
 // ---------------------- API routes (register first) ----------------------
 
 // Only mount a router if it loaded successfully, otherwise warn and skip.
