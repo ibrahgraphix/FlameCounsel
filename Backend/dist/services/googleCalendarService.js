@@ -348,18 +348,14 @@ const GoogleCalendarService = {
         catch (err) {
             throw new Error("studentRepository failure: " + err.message);
         }
-        // Create booking row in DB
-        const bookingRow = await bookingRepository_1.default.createBooking(finalStudentId, counselor_id, booking_date, startDT.toFormat("HH:mm:ss"), year_level ?? null, additional_notes ?? null);
-        // Try to store google event id (non-fatal)
-        try {
-            if (bookingRow &&
-                googleEvent?.id &&
-                typeof bookingRepository_1.default.updateGoogleEventId === "function") {
-                await bookingRepository_1.default.updateGoogleEventId(bookingRow.booking_id, googleEvent.id);
-            }
+        // Create booking row in DB with google_event_id already set
+        const bookingRow = await bookingRepository_1.default.createBooking(finalStudentId, counselor_id, booking_date, startDT.toFormat("HH:mm:ss"), year_level ?? null, additional_notes ?? null, undefined, // client
+        googleEvent?.id ?? null);
+        if (googleEvent?.id) {
+            console.log(`[GoogleCalendarService] Created booking ${bookingRow.booking_id} with google_event_id: ${googleEvent.id}`);
         }
-        catch (e) {
-            console.warn("Could not persist google event id to booking row:", e);
+        else {
+            console.warn(`[GoogleCalendarService] Created booking ${bookingRow.booking_id} WITHOUT google_event_id (googleEvent?.id was missing)`);
         }
         const confirmed = await bookingRepository_1.default.updateBookingStatus(bookingRow.booking_id, "confirmed");
         return { booking: confirmed ?? bookingRow, googleEvent };

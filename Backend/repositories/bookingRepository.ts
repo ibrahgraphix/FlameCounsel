@@ -10,11 +10,12 @@ export const bookingRepository = {
     bookingTime: string,
     yearLevel?: string | null,
     additionalNotes?: string | null,
-    client?: any
+    client?: any,
+    googleEventId?: string | null
   ): Promise<BookingRow> {
     const q = `INSERT INTO bookings
-       (student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,'pending', NOW(), NOW())
+       (student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id)
+       VALUES ($1,$2,$3,$4,$5,$6,'pending', NOW(), NOW(), $7)
        RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id`;
     const params = [
       // allow null for guest bookings
@@ -24,6 +25,7 @@ export const bookingRepository = {
       bookingTime,
       yearLevel ?? null,
       additionalNotes ?? null,
+      googleEventId ?? null,
     ];
     const res = client
       ? await client.query(q, params)

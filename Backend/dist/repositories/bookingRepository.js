@@ -7,10 +7,10 @@ exports.bookingRepository = void 0;
 // src/repositories/bookingRepository.ts
 const db_1 = __importDefault(require("../config/db"));
 exports.bookingRepository = {
-    async createBooking(studentId, counselorId, bookingDate, bookingTime, yearLevel, additionalNotes, client) {
+    async createBooking(studentId, counselorId, bookingDate, bookingTime, yearLevel, additionalNotes, client, googleEventId) {
         const q = `INSERT INTO bookings
-       (student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,'pending', NOW(), NOW())
+       (student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id)
+       VALUES ($1,$2,$3,$4,$5,$6,'pending', NOW(), NOW(), $7)
        RETURNING booking_id, student_id, counselor_id, booking_date, booking_time, year_level, additional_notes, status, created_at, updated_at, google_event_id`;
         const params = [
             // allow null for guest bookings
@@ -20,6 +20,7 @@ exports.bookingRepository = {
             bookingTime,
             yearLevel ?? null,
             additionalNotes ?? null,
+            googleEventId ?? null,
         ];
         const res = client
             ? await client.query(q, params)
