@@ -2,8 +2,7 @@
 import axios from "axios";
 import { toast } from "@/components/ui/sonner";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 const api = axios.create({
   baseURL: API_BASE,
   withCredentials: true,

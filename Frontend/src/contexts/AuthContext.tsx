@@ -4,9 +4,7 @@ import axios from "axios";
 import { toast } from "@/components/ui/sonner";
 import { setAuthToken } from "@/services/api";
 
-const API_BASE: string =
-  (import.meta.env.VITE_API_URL as string) ||
-  "https://flamestudentcouncil.in";
+const API_BASE: string = (import.meta.env.VITE_API_URL as string) || "";
 
 export type User = {
   id: number;

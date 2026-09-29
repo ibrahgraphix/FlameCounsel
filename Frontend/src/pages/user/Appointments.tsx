@@ -388,7 +388,9 @@ const Appointments: React.FC = () => {
               profile_picture: c.profile_picture ?? null,
               bio: c.bio ?? null,
               avatar: c.profile_picture
-                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${c.profile_picture}`)
+                ? (c.profile_picture.startsWith('http')
+                  ? c.profile_picture
+                  : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${c.profile_picture.startsWith('/') ? '' : '/'}${c.profile_picture}`)
                 : (c.avatar ?? makeAvatar(name ?? c.email ?? `c${i + 1}`)),
               role: c.role ?? c.raw?.role ?? null,
               raw: c,
@@ -435,7 +437,9 @@ const Appointments: React.FC = () => {
               profile_picture: c.profile_picture ?? null,
               bio: c.bio ?? null,
               avatar: c.profile_picture
-                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${c.profile_picture}`)
+                ? (c.profile_picture.startsWith('http')
+                  ? c.profile_picture
+                  : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${c.profile_picture.startsWith('/') ? '' : '/'}${c.profile_picture}`)
                 : (c.avatar ?? makeAvatar(name ?? c.email ?? `c${c.id}`)),
               role: (c as any).role ?? null,
               raw: c,
@@ -1199,9 +1203,13 @@ const Appointments: React.FC = () => {
                                   <AvatarImage
                                     src={
                                       appointment.raw?.counselor?.profile_picture
-                                        ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.counselor.profile_picture}`)
+                                        ? (appointment.raw.counselor.profile_picture.startsWith('http')
+                                          ? appointment.raw.counselor.profile_picture
+                                          : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${appointment.raw.counselor.profile_picture.startsWith('/') ? '' : '/'}${appointment.raw.counselor.profile_picture}`)
                                         : (appointment.raw?.therapist?.profile_picture
-                                          ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.therapist.profile_picture}`)
+                                          ? (appointment.raw.therapist.profile_picture.startsWith('http')
+                                            ? appointment.raw.therapist.profile_picture
+                                            : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${appointment.raw.therapist.profile_picture.startsWith('/') ? '' : '/'}${appointment.raw.therapist.profile_picture}`)
                                           : makeAvatar(appointment.therapistName || "therapist")
                                         )
                                     }
@@ -1348,9 +1356,13 @@ const Appointments: React.FC = () => {
                               <AvatarImage
                                 src={
                                   appointment.raw?.counselor?.profile_picture
-                                    ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.counselor.profile_picture}`)
+                                    ? (appointment.raw.counselor.profile_picture.startsWith('http')
+                                      ? appointment.raw.counselor.profile_picture
+                                      : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${appointment.raw.counselor.profile_picture.startsWith('/') ? '' : '/'}${appointment.raw.counselor.profile_picture}`)
                                     : (appointment.raw?.therapist?.profile_picture
-                                      ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.therapist.profile_picture}`)
+                                      ? (appointment.raw.therapist.profile_picture.startsWith('http')
+                                        ? appointment.raw.therapist.profile_picture
+                                        : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${appointment.raw.therapist.profile_picture.startsWith('/') ? '' : '/'}${appointment.raw.therapist.profile_picture}`)
                                       : makeAvatar(appointment.therapistName || "therapist")
                                     )
                                 }
@@ -1454,7 +1466,7 @@ const Appointments: React.FC = () => {
                                     c.profile_picture
                                       ? (c.profile_picture.startsWith('http')
                                         ? c.profile_picture
-                                        : `${(import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in").replace(/\/$/, "")}${c.profile_picture.startsWith("/") ? "" : "/"}${c.profile_picture}`)
+                                        : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${c.profile_picture.startsWith("/") ? "" : "/"}${c.profile_picture}`)
                                       : makeAvatar(c.name)
                                   }
                                   alt={c.name}
@@ -1511,7 +1523,9 @@ const Appointments: React.FC = () => {
                           <Avatar className="h-8 w-8 mr-2">
                             <AvatarImage
                               src={selectedCounselor.profile_picture
-                                ? (selectedCounselor.profile_picture.startsWith('http') ? selectedCounselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${selectedCounselor.profile_picture}`)
+                                ? (selectedCounselor.profile_picture.startsWith('http')
+                                  ? selectedCounselor.profile_picture
+                                  : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${selectedCounselor.profile_picture.startsWith('/') ? '' : '/'}${selectedCounselor.profile_picture}`)
                                 : (selectedCounselor.avatar ?? makeAvatar(selectedCounselor.name))
                               }
                               alt={selectedCounselor.name}

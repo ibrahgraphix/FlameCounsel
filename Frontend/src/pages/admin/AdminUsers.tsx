@@ -126,7 +126,9 @@ const AdminUsers: React.FC = () => {
             const email = c.email ?? c.raw?.email ?? "";
             const avatar =
               c.profile_picture
-                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${c.profile_picture}`)
+                ? (c.profile_picture.startsWith('http')
+                  ? c.profile_picture
+                  : `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}${c.profile_picture.startsWith('/') ? '' : '/'}${c.profile_picture}`)
                 : (c.avatar ??
                   (name
                     ? makeAvatar(name)

@@ -162,7 +162,7 @@ const SettingsPage = () => {
       if (selectedFile) {
         const uploadRes = await uploadProfilePicture(counselorId, selectedFile);
         if (uploadRes?.profile_picture) {
-          const apiBase = (import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in").replace(/\/$/, "");
+          const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
           const fullPath = uploadRes.profile_picture.startsWith("http")
             ? uploadRes.profile_picture
             : `${apiBase}${uploadRes.profile_picture.startsWith("/") ? "" : "/"}${uploadRes.profile_picture}`;

@@ -17,8 +17,7 @@ export interface MoodEntryPayload {
   notes?: string | null;
 }
 
-const API_BASE =
-  import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 async function fetchWithErrorHandling(url: string, opts: RequestInit) {
   const res = await fetch(url, opts);

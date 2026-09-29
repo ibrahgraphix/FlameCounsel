@@ -53,13 +53,23 @@ studentProxy = tryRequire("./routes/studentProxy");
 gamesRouter = tryRequire("./routes/games");
 counselorSettingsRouter = tryRequire("./routes/counselorSettingsRoutes");
 
-// allow cross-origin from your front-end with credentials
-const CLIENT_ORIGIN =
-  process.env.CLIENT_URL || "https://flamestudentcouncil.in:7070";
+const allowedOrigins = [
+  "https://flamestudentcouncil.in",
+  "https://flamestudentcouncil.in:7070",
+  "http://localhost:7070",
+  "http://localhost:5173",
+  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
+];
 
 app.use(
   cors({
-    origin: CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
   })
 );
@@ -142,6 +152,8 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // Static client serving: candidates are evaluated relative to this file's directory
 const buildCandidates = [
+  path.join(__dirname, "..", "Frontend", "dist"), // monorepo Frontend/dist
+  path.join(process.cwd(), "Frontend", "dist"),
   path.join(__dirname, "..", "client", "dist"), // monorepo client/dist
   path.join(__dirname, "..", "client", "build"), // CRA convention
   path.join(__dirname, "..", "dist"), // simple root dist
