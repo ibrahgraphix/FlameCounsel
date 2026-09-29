@@ -5,7 +5,7 @@ import axios from "axios";
 const router = express.Router();
 
 const STUDENT_API_BASE =
-  process.env.STUDENT_API_BASE || "https://studenttracking.in:5173/employee";
+  process.env.STUDENT_API_BASE || "https://studenttracking.in/api/employee";
 
 const AXIOS_TIMEOUT_MS = Number(process.env.STUDENT_PROXY_TIMEOUT_MS) || 8_000;
 
