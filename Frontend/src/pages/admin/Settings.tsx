@@ -162,9 +162,9 @@ const SettingsPage = () => {
       if (selectedFile) {
         const uploadRes = await uploadProfilePicture(counselorId, selectedFile);
         if (uploadRes?.profile_picture) {
-          const apiBase = (import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000").replace(/\/$/, "");
-          const fullPath = uploadRes.profile_picture.startsWith("http") 
-            ? uploadRes.profile_picture 
+          const apiBase = (import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in").replace(/\/$/, "");
+          const fullPath = uploadRes.profile_picture.startsWith("http")
+            ? uploadRes.profile_picture
             : `${apiBase}${uploadRes.profile_picture.startsWith("/") ? "" : "/"}${uploadRes.profile_picture}`;
           setProfilePicture(fullPath);
           setSelectedFile(null);
@@ -182,7 +182,7 @@ const SettingsPage = () => {
 
   const handleRemovePicture = async () => {
     if (!counselorId) return;
-    
+
     // If it's just a preview, clear it
     if (selectedFile) {
       setSelectedFile(null);
@@ -291,33 +291,33 @@ const SettingsPage = () => {
                 <div className="relative group">
                   <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     {previewUrl || profilePicture ? (
-                      <img 
-                        src={previewUrl || profilePicture || ""} 
-                        alt="Profile" 
+                      <img
+                        src={previewUrl || profilePicture || ""}
+                        alt="Profile"
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <UserIcon className="h-12 w-12 text-slate-400" />
                     )}
                   </div>
-                  <label 
-                    htmlFor="picture-upload" 
+                  <label
+                    htmlFor="picture-upload"
                     className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer rounded-full transition-opacity"
                   >
                     <Camera className="h-6 w-6" />
                   </label>
-                  <input 
-                    id="picture-upload" 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
+                  <input
+                    id="picture-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
                     onChange={handleFileChange}
                   />
                 </div>
                 {(previewUrl || profilePicture) && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     onClick={handleRemovePicture}
                   >
@@ -325,7 +325,7 @@ const SettingsPage = () => {
                   </Button>
                 )}
                 <p className="text-xs text-slate-500 text-center">
-                  Click to upload a profile picture.<br/>Only JPEG, PNG or WebP (max 5MB).
+                  Click to upload a profile picture.<br />Only JPEG, PNG or WebP (max 5MB).
                 </p>
               </CardContent>
             </Card>
@@ -341,9 +341,9 @@ const SettingsPage = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="full-name">Full Name</Label>
-                  <Input 
-                    id="full-name" 
-                    value={profileName} 
+                  <Input
+                    id="full-name"
+                    value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
                     placeholder="Enter your full name"
                     className={darkMode ? "bg-slate-800 border-slate-700" : ""}
@@ -351,18 +351,17 @@ const SettingsPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Short Bio</Label>
-                  <textarea 
+                  <textarea
                     id="bio"
                     value={profileBio}
                     onChange={(e) => setProfileBio(e.target.value)}
                     placeholder="Write a short bio about yourself..."
-                    className={`flex min-h-[120px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                      darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-900"
-                    }`}
+                    className={`flex min-h-[120px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-900"
+                      }`}
                   />
                   <p className="text-xs text-slate-500 italic">
-                    {user?.role?.toLowerCase() === "admin" 
-                      ? "This bio is for your internal profile." 
+                    {user?.role?.toLowerCase() === "admin"
+                      ? "This bio is for your internal profile."
                       : "This bio will be shown to students when they book an appointment."}
                   </p>
                 </div>
@@ -374,118 +373,117 @@ const SettingsPage = () => {
         {/* --- Calendar Tab --- */}
         {user?.role?.toLowerCase() === "counselor" && (
           <TabsContent value="calendar" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Session Duration */}
-            <Card className="lg:col-span-1 h-fit">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-blue-500" />
-                  Session Duration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Duration of each session (minutes)</Label>
-                  <Select
-                    value={String(sessionDuration)}
-                    onValueChange={(v) => setSessionDuration(Number(v))}
-                  >
-                    <SelectTrigger className={darkMode ? "bg-slate-800 border-slate-700" : ""}>
-                      <SelectValue placeholder="Select duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 Minutes</SelectItem>
-                      <SelectItem value="30">30 Minutes</SelectItem>
-                      <SelectItem value="45">45 Minutes</SelectItem>
-                      <SelectItem value="60">1 Hour</SelectItem>
-                      <SelectItem value="90">1.5 Hours</SelectItem>
-                      <SelectItem value="120">2 Hours</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-slate-500 italic">
-                    Appointments will be split into slots of this duration.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Session Duration */}
+              <Card className="lg:col-span-1 h-fit">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-500" />
+                    Session Duration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Duration of each session (minutes)</Label>
+                    <Select
+                      value={String(sessionDuration)}
+                      onValueChange={(v) => setSessionDuration(Number(v))}
+                    >
+                      <SelectTrigger className={darkMode ? "bg-slate-800 border-slate-700" : ""}>
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 Minutes</SelectItem>
+                        <SelectItem value="30">30 Minutes</SelectItem>
+                        <SelectItem value="45">45 Minutes</SelectItem>
+                        <SelectItem value="60">1 Hour</SelectItem>
+                        <SelectItem value="90">1.5 Hours</SelectItem>
+                        <SelectItem value="120">2 Hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500 italic">
+                      Appointments will be split into slots of this duration.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Working Hours per Day */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-blue-500" />
-                  Weekly Availability
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {DAYS.map((day) => {
-                    const setting = availability.find(
-                      (a) => a.day_of_week === day.value
-                    );
-                    return (
-                      <div
-                        key={day.value}
-                        className={`flex flex-wrap items-center justify-between p-3 rounded-lg border ${
-                          setting?.is_enabled
-                            ? darkMode
-                              ? "bg-slate-800/50 border-slate-700"
-                              : "bg-blue-50/50 border-blue-100"
-                            : darkMode
-                            ? "bg-slate-900 border-slate-800 opacity-50"
-                            : "bg-slate-50 border-slate-200 opacity-60"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4 min-w-[120px]">
-                          <Checkbox
-                            id={`day-${day.value}`}
-                            checked={setting?.is_enabled}
-                            onCheckedChange={() => toggleDay(day.value)}
-                          />
-                          <Label
-                            htmlFor={`day-${day.value}`}
-                            className="font-semibold cursor-pointer"
-                          >
-                            {day.label}
-                          </Label>
-                        </div>
-
-                        {setting?.is_enabled ? (
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-500 uppercase font-bold">From</span>
-                              <Input
-                                type="time"
-                                className="w-32 h-9"
-                                value={setting.start_time.slice(0, 5)}
-                                onChange={(e) =>
-                                  updateTime(day.value, "start_time", e.target.value)
-                                }
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-500 uppercase font-bold">To</span>
-                              <Input
-                                type="time"
-                                className="w-32 h-9"
-                                value={setting.end_time.slice(0, 5)}
-                                onChange={(e) =>
-                                  updateTime(day.value, "end_time", e.target.value)
-                                }
-                              />
-                            </div>
+              {/* Working Hours per Day */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5 text-blue-500" />
+                    Weekly Availability
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {DAYS.map((day) => {
+                      const setting = availability.find(
+                        (a) => a.day_of_week === day.value
+                      );
+                      return (
+                        <div
+                          key={day.value}
+                          className={`flex flex-wrap items-center justify-between p-3 rounded-lg border ${setting?.is_enabled
+                              ? darkMode
+                                ? "bg-slate-800/50 border-slate-700"
+                                : "bg-blue-50/50 border-blue-100"
+                              : darkMode
+                                ? "bg-slate-900 border-slate-800 opacity-50"
+                                : "bg-slate-50 border-slate-200 opacity-60"
+                            }`}
+                        >
+                          <div className="flex items-center gap-4 min-w-[120px]">
+                            <Checkbox
+                              id={`day-${day.value}`}
+                              checked={setting?.is_enabled}
+                              onCheckedChange={() => toggleDay(day.value)}
+                            />
+                            <Label
+                              htmlFor={`day-${day.value}`}
+                              className="font-semibold cursor-pointer"
+                            >
+                              {day.label}
+                            </Label>
                           </div>
-                        ) : (
-                          <span className="text-sm font-medium italic text-slate-400">Unavailable</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+
+                          {setting?.is_enabled ? (
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 uppercase font-bold">From</span>
+                                <Input
+                                  type="time"
+                                  className="w-32 h-9"
+                                  value={setting.start_time.slice(0, 5)}
+                                  onChange={(e) =>
+                                    updateTime(day.value, "start_time", e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 uppercase font-bold">To</span>
+                                <Input
+                                  type="time"
+                                  className="w-32 h-9"
+                                  value={setting.end_time.slice(0, 5)}
+                                  onChange={(e) =>
+                                    updateTime(day.value, "end_time", e.target.value)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-medium italic text-slate-400">Unavailable</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         )}
 
         {/* --- Notifications Tab --- */}

@@ -126,11 +126,11 @@ const AdminUsers: React.FC = () => {
             const email = c.email ?? c.raw?.email ?? "";
             const avatar =
               c.profile_picture
-                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${c.profile_picture}`)
                 : (c.avatar ??
-                    (name
-                      ? makeAvatar(name)
-                      : makeAvatar(email ?? `counselor-${id}`)));
+                  (name
+                    ? makeAvatar(name)
+                    : makeAvatar(email ?? `counselor-${id}`)));
 
             const statusRaw =
               (c.status ?? c.raw?.status ?? "active")
@@ -275,10 +275,10 @@ const AdminUsers: React.FC = () => {
       // Normalise the returned user to the shape we use in the table
       const id = String(
         created?.id ??
-          created?.user_id ??
-          created?.student_id ??
-          created?.counselor_id ??
-          Date.now()
+        created?.user_id ??
+        created?.student_id ??
+        created?.counselor_id ??
+        Date.now()
       );
       const name = created?.name ?? created?.full_name ?? newName;
       const email = created?.email ?? newEmail;
@@ -493,8 +493,8 @@ const AdminUsers: React.FC = () => {
                             user.role === "admin"
                               ? "default"
                               : user.role === "counselor"
-                              ? "secondary"
-                              : "outline"
+                                ? "secondary"
+                                : "outline"
                           }
                         >
                           {user.role}
@@ -589,9 +589,8 @@ const AdminUsers: React.FC = () => {
             onClick={() => setDetailsUser(null)}
           >
             <div
-              className={`${
-                isDark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-700"
-              } rounded-lg p-6 w-96`}
+              className={`${isDark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-700"
+                } rounded-lg p-6 w-96`}
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>
@@ -622,9 +621,8 @@ const AdminUsers: React.FC = () => {
             onClick={closeAddModal}
           >
             <form
-              className={`${
-                isDark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-700"
-              } rounded-lg p-6 w-full max-w-md`}
+              className={`${isDark ? "bg-gray-800 text-gray-300" : "bg-white text-gray-700"
+                } rounded-lg p-6 w-full max-w-md`}
               onSubmit={handleAddUser}
               onClick={(e) => e.stopPropagation()}
             >
@@ -634,9 +632,8 @@ const AdminUsers: React.FC = () => {
                 </h3>
                 <button
                   type="button"
-                  className={`p-1 rounded ${
-                    isDark ? "hover:bg-gray-700" : "hover:bg-gray-100"
-                  }`}
+                  className={`p-1 rounded ${isDark ? "hover:bg-gray-700" : "hover:bg-gray-100"
+                    }`}
                   onClick={closeAddModal}
                 >
                   <X className={`h-4 w-4 ${textColor}`} />

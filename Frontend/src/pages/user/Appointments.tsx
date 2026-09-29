@@ -169,9 +169,9 @@ const Appointments: React.FC = () => {
     const time = String(a.booking_time ?? a.time ?? "").trim();
     const counselor = String(
       (a as any).counselor_id ??
-        (a as any).therapistId ??
-        (a as any).therapist_id ??
-        ""
+      (a as any).therapistId ??
+      (a as any).therapist_id ??
+      ""
     ).trim();
     return `u:${student}|d:${date}|t:${time}|c:${counselor}`;
   };
@@ -265,7 +265,7 @@ const Appointments: React.FC = () => {
       if (isValidDate(iso)) return format(iso, "MMM d, yyyy");
       const asDate = new Date(String(d));
       if (!isNaN(asDate.getTime())) return format(asDate, "MMM d, yyyy");
-    } catch (e) {}
+    } catch (e) { }
     return String(d);
   };
 
@@ -292,24 +292,24 @@ const Appointments: React.FC = () => {
       if (user) {
         // Dispatch based on role
         const role = (user.role ?? "").toLowerCase();
-        
+
         let fetchedByRole: any[] = [];
         if (role === "admin") {
           fetchedByRole = await import("@/services/api").then(m => m.getAllAppointments());
         } else if (role === "counselor") {
           fetchedByRole = await import("@/services/api").then(m => m.getCounselorBookings());
         } else {
-           // Student or other: use getUserAppointments with EMAIL
-           // Note: getUserAppointments requires a token in localStorage for that email to work via student/view.
-           // If we are logged in as a student, we likely want to hit a different endpoint or ensure api.ts handles it.
-           // However, for now, let's pass email if available.
-           const email = user.email || (user.id && String(user.id).includes("@") ? String(user.id) : null);
-           if (email) {
-              fetchedByRole = await getUserAppointments(email);
-           } else {
-              // fallback if no email found on user object
-              fetchedByRole = []; 
-           }
+          // Student or other: use getUserAppointments with EMAIL
+          // Note: getUserAppointments requires a token in localStorage for that email to work via student/view.
+          // If we are logged in as a student, we likely want to hit a different endpoint or ensure api.ts handles it.
+          // However, for now, let's pass email if available.
+          const email = user.email || (user.id && String(user.id).includes("@") ? String(user.id) : null);
+          if (email) {
+            fetchedByRole = await getUserAppointments(email);
+          } else {
+            // fallback if no email found on user object
+            fetchedByRole = [];
+          }
         }
 
         setAppointments(
@@ -387,8 +387,8 @@ const Appointments: React.FC = () => {
               specialty: c.specialty ?? c.speciality ?? null,
               profile_picture: c.profile_picture ?? null,
               bio: c.bio ?? null,
-              avatar: c.profile_picture 
-                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+              avatar: c.profile_picture
+                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${c.profile_picture}`)
                 : (c.avatar ?? makeAvatar(name ?? c.email ?? `c${i + 1}`)),
               role: c.role ?? c.raw?.role ?? null,
               raw: c,
@@ -434,8 +434,8 @@ const Appointments: React.FC = () => {
               specialty: c.specialty ?? null,
               profile_picture: c.profile_picture ?? null,
               bio: c.bio ?? null,
-              avatar: c.profile_picture 
-                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${c.profile_picture}`)
+              avatar: c.profile_picture
+                ? (c.profile_picture.startsWith('http') ? c.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${c.profile_picture}`)
                 : (c.avatar ?? makeAvatar(name ?? c.email ?? `c${c.id}`)),
               role: (c as any).role ?? null,
               raw: c,
@@ -490,10 +490,10 @@ const Appointments: React.FC = () => {
       const counselorId =
         Number(
           booking?.counselor_id ??
-            booking?.therapistId ??
-            booking?.therapist_id ??
-            booking?.c_counselor_id ??
-            booking?.counselorId
+          booking?.therapistId ??
+          booking?.therapist_id ??
+          booking?.c_counselor_id ??
+          booking?.counselorId
         ) || null;
 
       if (!counselorId) {
@@ -621,7 +621,7 @@ const Appointments: React.FC = () => {
       if (!user && email) {
         try {
           localStorage.setItem(LAST_GUEST_EMAIL_KEY, email);
-        } catch (e) {}
+        } catch (e) { }
         setGuestLoadedEmail(email);
         try {
           const possibleToken = localStorage.getItem(
@@ -630,14 +630,14 @@ const Appointments: React.FC = () => {
           if (possibleToken) setAuthToken(possibleToken);
           const fallback = localStorage.getItem(`mindease_token_${email}`);
           if (fallback) setAuthToken(fallback);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       setAppointments((prev) =>
         dedupeAppointments([...(prev || []), normalized])
       );
       setTimeout(() => {
-        fetchMyAppointments().catch(() => {});
+        fetchMyAppointments().catch(() => { });
       }, 700);
 
       setAvailableSlots((prev) => prev.filter((s) => s !== selectedTime));
@@ -651,7 +651,7 @@ const Appointments: React.FC = () => {
             .then((fresh) =>
               setAvailableSlots(Array.isArray(fresh) ? fresh : [])
             )
-            .catch(() => {});
+            .catch(() => { });
         }
       }, 800);
 
@@ -926,13 +926,13 @@ const Appointments: React.FC = () => {
         if (isValidDate(parsed)) {
           return parsed.getTime() < Date.now();
         }
-      } catch (e) {}
+      } catch (e) { }
       try {
         const parsed2 = new Date(`${dateStr} ${timeStr}`);
         if (!isNaN(parsed2.getTime())) {
           return parsed2.getTime() < Date.now();
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     try {
       const parsedDate = parseISO(String(dateStr));
@@ -1085,10 +1085,10 @@ const Appointments: React.FC = () => {
                                                   }
                                                   style={
                                                     rescheduleSelectedTime ===
-                                                    slot
+                                                      slot
                                                       ? {
-                                                          backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
-                                                        }
+                                                        backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
+                                                      }
                                                       : undefined
                                                   }
                                                 >
@@ -1117,10 +1117,10 @@ const Appointments: React.FC = () => {
                                                   }
                                                   style={
                                                     rescheduleSelectedTime ===
-                                                    slot
+                                                      slot
                                                       ? {
-                                                          backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
-                                                        }
+                                                        backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
+                                                      }
                                                       : undefined
                                                   }
                                                 >
@@ -1186,8 +1186,8 @@ const Appointments: React.FC = () => {
                             <div
                               key={String(
                                 appointment.booking_id ??
-                                  appointment.id ??
-                                  index
+                                appointment.id ??
+                                index
                               )}
                               className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-4"
                             >
@@ -1198,10 +1198,10 @@ const Appointments: React.FC = () => {
                                 >
                                   <AvatarImage
                                     src={
-                                      appointment.raw?.counselor?.profile_picture 
-                                        ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.counselor.profile_picture}`)
+                                      appointment.raw?.counselor?.profile_picture
+                                        ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.counselor.profile_picture}`)
                                         : (appointment.raw?.therapist?.profile_picture
-                                          ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.therapist.profile_picture}`)
+                                          ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.therapist.profile_picture}`)
                                           : makeAvatar(appointment.therapistName || "therapist")
                                         )
                                     }
@@ -1229,7 +1229,7 @@ const Appointments: React.FC = () => {
                                       <span className="truncate">
                                         {formatDisplayDate(
                                           appointment.booking_date ??
-                                            appointment.date
+                                          appointment.date
                                         )}
                                       </span>
                                     </div>
@@ -1273,8 +1273,8 @@ const Appointments: React.FC = () => {
                                       onClick={() =>
                                         handleCancel(
                                           appointment.booking_id ??
-                                            appointment.id ??
-                                            ""
+                                          appointment.id ??
+                                          ""
                                         )
                                       }
                                       className="w-full sm:w-auto"
@@ -1347,10 +1347,10 @@ const Appointments: React.FC = () => {
                             >
                               <AvatarImage
                                 src={
-                                  appointment.raw?.counselor?.profile_picture 
-                                    ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.counselor.profile_picture}`)
+                                  appointment.raw?.counselor?.profile_picture
+                                    ? (appointment.raw.counselor.profile_picture.startsWith('http') ? appointment.raw.counselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.counselor.profile_picture}`)
                                     : (appointment.raw?.therapist?.profile_picture
-                                      ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${appointment.raw.therapist.profile_picture}`)
+                                      ? (appointment.raw.therapist.profile_picture.startsWith('http') ? appointment.raw.therapist.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${appointment.raw.therapist.profile_picture}`)
                                       : makeAvatar(appointment.therapistName || "therapist")
                                     )
                                 }
@@ -1442,23 +1442,23 @@ const Appointments: React.FC = () => {
                               style={
                                 selectedCounselorId === c.id
                                   ? {
-                                      borderColor: PRIMARY,
-                                      backgroundColor: "rgba(30,58,138,0.04)",
-                                    }
+                                    borderColor: PRIMARY,
+                                    backgroundColor: "rgba(30,58,138,0.04)",
+                                  }
                                   : undefined
                               }
                             >
                               <Avatar className="h-10 w-10">
-                                  <AvatarImage
-                                    src={
-                                      c.profile_picture
-                                        ? (c.profile_picture.startsWith('http') 
-                                            ? c.profile_picture 
-                                            : `${(import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000").replace(/\/$/, "")}${c.profile_picture.startsWith("/") ? "" : "/"}${c.profile_picture}`)
-                                        : makeAvatar(c.name)
-                                    }
-                                    alt={c.name}
-                                  />
+                                <AvatarImage
+                                  src={
+                                    c.profile_picture
+                                      ? (c.profile_picture.startsWith('http')
+                                        ? c.profile_picture
+                                        : `${(import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in").replace(/\/$/, "")}${c.profile_picture.startsWith("/") ? "" : "/"}${c.profile_picture}`)
+                                      : makeAvatar(c.name)
+                                  }
+                                  alt={c.name}
+                                />
                                 <AvatarFallback>
                                   {c.name?.charAt(0) ?? "C"}
                                 </AvatarFallback>
@@ -1470,7 +1470,7 @@ const Appointments: React.FC = () => {
                                 >
                                   {c.name}
                                 </h3>
-                                  {/* {c.specialty && (
+                                {/* {c.specialty && (
                                     <p className={`text-xs ${mutedText} truncate`}>
                                       {c.specialty}
                                     </p>
@@ -1510,8 +1510,8 @@ const Appointments: React.FC = () => {
                         >
                           <Avatar className="h-8 w-8 mr-2">
                             <AvatarImage
-                              src={selectedCounselor.profile_picture 
-                                ? (selectedCounselor.profile_picture.startsWith('http') ? selectedCounselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000"}${selectedCounselor.profile_picture}`)
+                              src={selectedCounselor.profile_picture
+                                ? (selectedCounselor.profile_picture.startsWith('http') ? selectedCounselor.profile_picture : `${import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in"}${selectedCounselor.profile_picture}`)
                                 : (selectedCounselor.avatar ?? makeAvatar(selectedCounselor.name))
                               }
                               alt={selectedCounselor.name}
@@ -1569,8 +1569,8 @@ const Appointments: React.FC = () => {
                                     style={
                                       selectedTime === slot
                                         ? {
-                                            backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
-                                          }
+                                          backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
+                                        }
                                         : undefined
                                     }
                                   >
@@ -1593,8 +1593,8 @@ const Appointments: React.FC = () => {
                                     style={
                                       selectedTime === slot
                                         ? {
-                                            backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
-                                          }
+                                          backgroundImage: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`,
+                                        }
                                         : undefined
                                     }
                                   >
@@ -1742,8 +1742,8 @@ const Appointments: React.FC = () => {
                                       {sendingCode
                                         ? "Sending..."
                                         : verificationSent
-                                        ? "Resend"
-                                        : "Send Code"}
+                                          ? "Resend"
+                                          : "Send Code"}
                                     </Button>
                                   </div>
 

@@ -6,7 +6,7 @@ import { setAuthToken } from "@/services/api";
 
 const API_BASE: string =
   (import.meta.env.VITE_API_URL as string) ||
-  "https://flamestudentcouncil.in:4000";
+  "https://flamestudentcouncil.in";
 
 export type User = {
   id: number;
@@ -35,7 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => false,
   register: async () => false,
-  logout: () => {},
+  logout: () => { },
   forgotPassword: async () => false,
   isAdmin: () => false,
   googleLogin: async () => false,
@@ -151,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const { token, counselor } = res.data;
 
-       if (!counselor || !token) {
+      if (!counselor || !token) {
         toast.error("Registration successful but missing user data.");
         return false; // Or true depending on if login is required
       }
@@ -236,9 +236,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // But what if the server doesn't send 'success: true' and just sends token? 
         // We'll check token existence below.
         // Assuming the current logic was correct for the backend structure.
-        if (data.success === false) { 
-             toast.error(data?.message || "Google sign-in failed");
-             return false;
+        if (data.success === false) {
+          toast.error(data?.message || "Google sign-in failed");
+          return false;
         }
       }
 

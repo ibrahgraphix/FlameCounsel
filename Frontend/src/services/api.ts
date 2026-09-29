@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "@/components/ui/sonner";
 
 const API_BASE =
-  import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in:4000";
+  import.meta.env.VITE_API_URL || "https://flamestudentcouncil.in";
 const api = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
@@ -79,10 +79,10 @@ export const getCounselors = async () => {
       Array.isArray(data) && data.length > 0
         ? data
         : Array.isArray(data?.counselors)
-        ? data.counselors
-        : Array.isArray(data?.rows)
-        ? data.rows
-        : [];
+          ? data.counselors
+          : Array.isArray(data?.rows)
+            ? data.rows
+            : [];
 
     const mapped = rows
       .map((r: any, idx: number) => normalizeCounselor(r, idx + 1))
@@ -291,9 +291,8 @@ export const bookAppointment = async (payload: {
       booking_time: payload.time,
       // change default duration to 60 (1 hour)
       duration: 60,
-      summary: `Counselling session with ${
-        payload.fullName ?? payload.email ?? "student"
-      }`,
+      summary: `Counselling session with ${payload.fullName ?? payload.email ?? "student"
+        }`,
       description: payload.notes ?? null,
       year_level: payload.year ?? null,
       additional_notes: payload.notes ?? null,
@@ -409,7 +408,7 @@ export const getUserAppointments = async (owner: string | number) => {
         if (Array.isArray(resp?.data)) return resp.data;
         if (resp?.data?.bookings) return resp.data.bookings;
       } catch (err: any) {
-         // Log error but do NOT fallback to stale local storage
+        // Log error but do NOT fallback to stale local storage
         console.warn(
           "Protected student bookings fetch failed:",
           err?.message ?? err
