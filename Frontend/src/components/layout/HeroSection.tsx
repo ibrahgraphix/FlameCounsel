@@ -8,7 +8,11 @@ import "swiper/css";
 import "swiper/css/effect-fade";
 import { useDetectDarkMode } from "@/components/ui/card";
 
-const slides = [{ src: "/assets/flameUni.webp", alt: "Counseling session" }];
+const slides = [
+  { src: "/assets/flameUni.webp", alt: "FLAME University Campus" },
+  { src: "/assets/mental-health.png", alt: "Mental Health and Wellness Support" },
+  { src: "/assets/selfcare.png", alt: "Self Care and Reflection" },
+];
 
 const HeroSection: React.FC = () => {
   const isDark = useDetectDarkMode();
@@ -71,8 +75,12 @@ const HeroSection: React.FC = () => {
             <Swiper
               modules={[EffectFade, Autoplay]}
               effect="fade"
-              autoplay={{ delay: 4000, disableOnInteraction: false }}
-              loop
+              autoplay={
+                slides.length > 1
+                  ? { delay: 4000, disableOnInteraction: false }
+                  : false
+              }
+              loop={slides.length > 1}
               className="rounded-xl overflow-hidden shadow-lg"
             >
               {slides.map((slide, i) => (

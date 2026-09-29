@@ -538,6 +538,15 @@ const Appointments: React.FC = () => {
         return;
       }
 
+      // Handle unavailable upstream returned by the backend proxy (503)
+      if (data?.unavailable) {
+        toast.info(
+          data.friendlyMessage ||
+            "Student lookup service is unavailable. Please enter your details manually."
+        );
+        return;
+      }
+
       const row = Array.isArray(data) ? data[0] : data;
 
       const nameCandidates = [
@@ -566,22 +575,30 @@ const Appointments: React.FC = () => {
       if (name) setFullName(String(name));
       if (emailVal) setEmail(String(emailVal));
       if (batch) setYear(String(batch));
-      toast.success("Student information auto-filled");
-    } catch (err: any) {
-      console.error("Student lookup error:", err);
-      if (err?.response) {
-        console.error(
-          "student-lookup proxy axios error:",
-          err.message,
-          "upstreamStatus:",
-          err.response.status
-        );
+
+      if (name || emailVal || batch) {
+        toast.success("Student information auto-filled");
+      } else {
+        toast.info("Student found but no details to auto-fill. Please enter manually.");
       }
-      toast.error(
-        "Could not lookup student. Ensure proxy is running or check server CORS."
+    } catch (err: any) {
+      console.warn("Student lookup error:", err);
+      // Check if the error response has our friendly message from the proxy
+      const responseData = err?.response?.data;
+      if (responseData?.unavailable || responseData?.friendlyMessage) {
+        toast.info(
+          responseData.friendlyMessage ||
+            "Student lookup unavailable. Please enter your details manually."
+        );
+        return;
+      }
+      // For any other error (network, etc.) just show a soft info — don't block the user
+      toast.info(
+        "Could not auto-fill student details. Please enter your information manually."
       );
     }
   };
+
 
   // -------------------- BOOKING / RESCHEDULE / CANCEL --------------------
   const handleBookAppointment = async () => {

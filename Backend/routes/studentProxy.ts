@@ -7,7 +7,7 @@ const router = express.Router();
 const STUDENT_API_BASE =
   process.env.STUDENT_API_BASE || "https://studenttracking.in:5173/employee";
 
-const AXIOS_TIMEOUT_MS = Number(process.env.STUDENT_PROXY_TIMEOUT_MS) || 10_000;
+const AXIOS_TIMEOUT_MS = Number(process.env.STUDENT_PROXY_TIMEOUT_MS) || 8_000;
 
 router.get("/student-lookup", async (req: Request, res: Response) => {
   try {
@@ -21,6 +21,8 @@ router.get("/student-lookup", async (req: Request, res: Response) => {
     // Build upstream URL (simple GET with ?code=...)
     const upstreamUrl = `${STUDENT_API_BASE}?code=${encodeURIComponent(code)}`;
 
+    console.log(`[student-lookup] Proxying to: ${upstreamUrl}`);
+
     // Server-to-server fetch — avoids browser CORS restrictions
     const response = await axios.get(upstreamUrl, {
       timeout: AXIOS_TIMEOUT_MS,
@@ -28,33 +30,55 @@ router.get("/student-lookup", async (req: Request, res: Response) => {
         Accept: "application/json",
       },
       responseType: "json",
-      // you can configure other axios options here if needed
     });
 
     // Forward upstream status & JSON body directly
     return res.status(response.status).json(response.data);
   } catch (err: any) {
-    // Axios errors include response when upstream returned non-2xx
     if (axios.isAxiosError(err)) {
       const status = err.response?.status ?? 502;
       const data = err.response?.data ?? { message: err.message };
-      // log for server debugging
-      console.error(
-        "student-lookup proxy axios error:",
-        err.message,
+
+      const isTimeout =
+        err.code === "ECONNABORTED" || (err.message ?? "").includes("timeout");
+      const isUnreachable =
+        err.code === "ECONNREFUSED" ||
+        err.code === "ENOTFOUND" ||
+        err.code === "ETIMEDOUT" ||
+        err.code === "EHOSTUNREACH";
+
+      const friendlyMessage = isTimeout
+        ? "Student lookup service timed out. Please enter your details manually."
+        : isUnreachable
+        ? "Student lookup service is currently unavailable. Please enter your details manually."
+        : `Student lookup returned an error (${status}). Please enter your details manually.`;
+
+      console.warn(
+        "[student-lookup] proxy error:",
+        err.code ?? err.message,
         "upstreamStatus:",
         status
       );
-      return res.status(status).json({
+
+      // Always return 503 (service unavailable) so frontend handles it cleanly
+      return res.status(503).json({
         proxied: true,
+        unavailable: true,
+        friendlyMessage,
         upstreamStatus: status,
         upstreamData: data,
       });
     }
 
-    console.error("student-lookup proxy unexpected error:", err);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("[student-lookup] unexpected error:", err);
+    return res.status(503).json({
+      proxied: true,
+      unavailable: true,
+      friendlyMessage:
+        "Internal server error during student lookup. Please enter your details manually.",
+    });
   }
 });
 
 export default router;
+
