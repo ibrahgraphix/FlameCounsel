@@ -397,22 +397,29 @@ export const bookAppointment = async (payload: {
 export const getUserAppointments = async (owner: string | number) => {
   if (typeof owner === "string" && owner.includes("@")) {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY(owner));
+      const token =
+        localStorage.getItem(ACCESS_TOKEN_KEY(owner)) ||
+        localStorage.getItem(`mindease_appt_token_${owner}`) ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("mindease_token");
       try {
         const resp = await api.post("/api/bookings/student/view", {
           student_email: owner,
           access_token: token,
         });
-        if (resp?.data?.success) return resp.data.bookings;
+        if (resp?.data?.access_token) {
+          localStorage.setItem(ACCESS_TOKEN_KEY(owner), resp.data.access_token);
+        }
+        if (resp?.data?.success && Array.isArray(resp.data.bookings)) {
+          return resp.data.bookings;
+        }
         if (Array.isArray(resp?.data)) return resp.data;
-        if (resp?.data?.bookings) return resp.data.bookings;
+        if (Array.isArray(resp?.data?.bookings)) return resp.data.bookings;
       } catch (err: any) {
-        // Log error but do NOT fallback to stale local storage
         console.warn(
-          "Protected student bookings fetch failed:",
+          "Student bookings fetch failed:",
           err?.message ?? err
         );
-        // Throw or return empty? Returning empty prevents "bug data".
         return [];
       }
     }

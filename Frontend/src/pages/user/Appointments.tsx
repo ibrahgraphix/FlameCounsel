@@ -573,7 +573,26 @@ const Appointments: React.FC = () => {
       const batch = yearCandidates.find((v) => v !== undefined && v !== null);
 
       if (name) setFullName(String(name));
-      if (emailVal) setEmail(String(emailVal));
+      if (emailVal) {
+        const resolvedEmail = String(emailVal).trim();
+        setEmail(resolvedEmail);
+        setGuestLoadedEmail(resolvedEmail);
+        try {
+          localStorage.setItem(LAST_GUEST_EMAIL_KEY, resolvedEmail);
+        } catch { }
+        // Fetch student's upcoming appointments immediately
+        getUserAppointments(resolvedEmail)
+          .then((appts) => {
+            if (appts && Array.isArray(appts)) {
+              setAppointments(
+                dedupeAppointments(
+                  appts.map((x: any) => normalizeBookingForClient(x))
+                )
+              );
+            }
+          })
+          .catch(() => { });
+      }
       if (batch) setYear(String(batch));
 
       if (name || emailVal || batch) {

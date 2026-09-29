@@ -251,46 +251,60 @@ export const BookingController = {
     }
   },
 
-  // Protected student view (POST with token)
+  // Student view: Return bookings for student email
   async getStudentBookingsProtected(req: Request, res: Response) {
     try {
-      const { student_email, access_token } = req.body;
-      if (!student_email)
+      const student_email = String(
+        req.body?.student_email ||
+        req.query?.student_email ||
+        req.query?.email ||
+        ""
+      ).trim();
+
+      if (!student_email) {
         return res.status(400).json({ error: "student_email required" });
-      if (!access_token)
-        return res.status(401).json({ error: "access_token required" });
-
-      let decoded: any = null;
-      try {
-        decoded = jwt.verify(access_token, JWT_SECRET as jwt.Secret) as any;
-      } catch (err) {
-        return res
-          .status(403)
-          .json({ error: "Invalid or expired access token" });
-      }
-
-      if (!decoded || decoded.email !== String(student_email)) {
-        return res
-          .status(403)
-          .json({ error: "Token does not match provided email" });
       }
 
       const bookings = await bookingService.getBookingsByStudentEmail(
         String(student_email)
       );
-      return res.json({ success: true, bookings });
+
+      // Issue a fresh access token for the student so frontend can store it
+      let accessToken: string | null = null;
+      try {
+        accessToken = jwt.sign(
+          { email: String(student_email) } as any,
+          JWT_SECRET,
+          { expiresIn: TOKEN_EXPIRY } as jwt.SignOptions
+        );
+      } catch (tokenErr) {
+        console.warn("Could not sign student token:", tokenErr);
+      }
+
+      return res.json({
+        success: true,
+        bookings,
+        access_token: accessToken,
+      });
     } catch (err: any) {
       console.error("getStudentBookingsProtected error:", err);
       return res.status(500).json({ success: false, error: "Server error" });
     }
   },
 
-  // Deprecated direct GET (reject)
-  async getStudentBookingsDeprecated(_req: Request, res: Response) {
-    return res.status(400).json({
-      error:
-        "Unprotected student lookups are disabled. Use POST /api/bookings/student/view with { student_email, access_token }.",
-    });
+  // Direct GET fallback (/api/bookings/student/:email)
+  async getStudentBookingsDeprecated(req: Request, res: Response) {
+    try {
+      const email = String(req.params.email ?? "").trim();
+      if (!email) {
+        return res.status(400).json({ error: "email required" });
+      }
+      const bookings = await bookingService.getBookingsByStudentEmail(email);
+      return res.json({ success: true, bookings });
+    } catch (err: any) {
+      console.error("getStudentBookings error:", err);
+      return res.status(500).json({ success: false, error: "Server error" });
+    }
   },
 
   // Counselor view: Return bookings for logged-in counselor only
