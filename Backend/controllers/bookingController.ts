@@ -25,6 +25,7 @@ const normalizeStatus = (s: string) => {
   if (st === "confirmed" || st === "confirm") return "confirmed";
   if (st === "pending") return "pending";
   if (st === "complete" || st === "completed") return "completed";
+  if (st === "closed") return "closed";
   return st;
 };
 
@@ -428,6 +429,13 @@ export const BookingController = {
       );
       if (!found) return res.status(403).json({ error: "Forbidden" });
 
+      // Block changes to closed bookings (expired, unconfirmed)
+      if (found && String(found.status ?? "").toLowerCase() === "closed") {
+        return res.status(403).json({
+          error: "This booking has been closed because the slot expired without confirmation. No further action is allowed.",
+        });
+      }
+
       const updated = await bookingService.updateBookingStatus(
         bookingId,
         normalized
@@ -515,6 +523,13 @@ export const BookingController = {
         (b: any) => String(b.booking_id) === String(bookingId)
       );
       if (!found) return res.status(403).json({ error: "Forbidden" });
+
+      // Block reschedule of closed bookings
+      if (String(found.status ?? "").toLowerCase() === "closed") {
+        return res.status(403).json({
+          error: "This booking has been closed because the slot expired without confirmation. No further action is allowed.",
+        });
+      }
 
       // Attempt Google reschedule for counselor-owned booking
       let googleResultCounselor: any = null;

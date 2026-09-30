@@ -4,6 +4,10 @@ import { studentRepository } from "../repositories/studentRepository";
 import { bookingRepository } from "../repositories/bookingRepository";
 import { BookingRow } from "../models/Booking";
 import GoogleCalendarService from "../services/googleCalendarService";
+// @ts-ignore
+import { DateTime } from "luxon";
+
+const DEFAULT_TIMEZONE = process.env.DEFAULT_TIMEZONE || "Asia/Kolkata";
 
 export const bookingService = {
   async createBooking({
@@ -27,10 +31,8 @@ export const bookingService = {
     try {
       await client.query("BEGIN");
 
-      // assume studentRepository has methods that accept client for transactional consistency
       let student = await studentRepository.findByEmail(student_email, client);
       if (!student) {
-        // create returns the created student row { student_id, name, email, ... }
         student = await studentRepository.create(
           student_name ?? null,
           student_email,
@@ -82,15 +84,34 @@ export const bookingService = {
       return null;
     }
 
-    // If canceled, try to remove from Google Calendar
+    // When counselor CONFIRMS, create the Google Calendar event (best-effort)
+    if (status === "confirmed") {
+      console.log(`[BookingService] Booking ${bookingId} confirmed. Creating Google Calendar event...`);
+      try {
+        const result = await GoogleCalendarService.createCalendarEventForBooking(bookingId);
+        if (result && result.success) {
+          console.log(`[BookingService] Google Calendar event created for booking ${bookingId}: ${result.googleEvent?.id}`);
+          // Return the refreshed row so the response includes the google_event_id
+          const refreshed = await bookingRepository.getBookingById(bookingId);
+          return refreshed ?? updated;
+        } else {
+          console.warn(
+            `[BookingService] Google Calendar event creation skipped/failed for booking ${bookingId}:`,
+            result?.reason,
+            result?.error
+          );
+        }
+      } catch (err) {
+        // Non-fatal: booking is already confirmed in DB; calendar creation is best-effort
+        console.error("[BookingService] Failed to create Google Calendar event on confirm:", err);
+      }
+    }
+
+    // When CANCELED, remove from Google Calendar if an event exists
     const isCanceled = status === "canceled" || status === "cancelled";
-    
     if (isCanceled) {
       console.log(`[BookingService] Booking ${bookingId} canceled. Checking for Google Calendar event...`);
-      console.log(`[BookingService] Updated object from DB: ${JSON.stringify(updated)}`);
-      
       if (updated.google_event_id && updated.counselor_id) {
-        console.log(`[BookingService] Found google_event_id: ${updated.google_event_id}. Attempting deletion for counselor: ${updated.counselor_id}`);
         try {
           const result = await GoogleCalendarService.deleteEvent(
             updated.counselor_id,
@@ -109,7 +130,9 @@ export const bookingService = {
           );
         }
       } else {
-        console.warn(`[BookingService] Cannot delete Google Calendar event: google_event_id (${updated.google_event_id}) or counselor_id (${updated.counselor_id}) missing.`);
+        console.warn(
+          `[BookingService] Cannot delete Google Calendar event: google_event_id (${updated.google_event_id}) or counselor_id (${updated.counselor_id}) missing.`
+        );
       }
     }
 
@@ -126,6 +149,67 @@ export const bookingService = {
       bookingDate,
       bookingTime
     );
+  },
+
+  /**
+   * closePendingExpiredBookings — scans all bookings with status='pending'
+   * and marks them 'closed' if the appointment time has already passed.
+   * Runs on startup and then every 5 minutes via the scheduler in server.ts.
+   * Counselors cannot act on closed bookings.
+   */
+  async closePendingExpiredBookings(): Promise<number> {
+    const pendingBookings = await bookingRepository.getPendingBookings();
+    const now = DateTime.now();
+    let closedCount = 0;
+
+    for (const booking of pendingBookings) {
+      try {
+        const tz = booking.counselor_timezone ?? DEFAULT_TIMEZONE;
+        const dateStr =
+          typeof booking.booking_date === "object"
+            ? (booking.booking_date as Date).toISOString().slice(0, 10)
+            : String(booking.booking_date ?? "");
+        const timeStr = String(booking.booking_time ?? "00:00:00").slice(0, 8);
+
+        if (!dateStr) continue;
+
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const [hour, minute, second] = timeStr.split(":").map(Number);
+
+        const bookingDT = DateTime.fromObject(
+          {
+            year,
+            month,
+            day,
+            hour: hour || 0,
+            minute: minute || 0,
+            second: second || 0,
+          },
+          { zone: tz }
+        );
+
+        if (!bookingDT.isValid) continue;
+
+        if (bookingDT < now) {
+          await bookingRepository.updateBookingStatus(booking.booking_id, "closed");
+          console.log(
+            `[BookingService] Auto-closed expired pending booking ${booking.booking_id} (slot was ${dateStr} ${timeStr})`
+          );
+          closedCount++;
+        }
+      } catch (err) {
+        console.error(
+          `[BookingService] Error checking expiry for booking ${booking.booking_id}:`,
+          err
+        );
+      }
+    }
+
+    if (closedCount > 0) {
+      console.log(`[BookingService] Auto-closed ${closedCount} expired pending booking(s).`);
+    }
+
+    return closedCount;
   },
 };
 

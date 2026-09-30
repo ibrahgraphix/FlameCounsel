@@ -122,7 +122,7 @@ export const bookingRepository = {
    */
   async updateGoogleEventId(
     bookingId: string | number,
-    googleEventId: string
+    googleEventId: string | null
   ): Promise<any | null> {
     try {
       const q = `UPDATE bookings
@@ -137,6 +137,70 @@ export const bookingRepository = {
       throw err;
     }
   },
+
+  async getBookingById(bookingId: string | number): Promise<any | null> {
+    const res = await pool.query(
+      `SELECT b.booking_id, b.student_id, b.counselor_id, b.booking_date, b.booking_time,
+              b.year_level, b.additional_notes, b.status, b.created_at, b.updated_at, b.google_event_id,
+              s.student_id AS s_student_id, s.name AS student_name, s.email AS student_email,
+              c.counselor_id AS c_counselor_id, c.name as counselor_name, c.email as counselor_email,
+              c.timezone as counselor_timezone
+       FROM bookings b
+       LEFT JOIN students s ON b.student_id = s.student_id
+       LEFT JOIN counselors c ON b.counselor_id = c.counselor_id
+       WHERE b.booking_id = $1`,
+      [bookingId]
+    );
+    if (!res.rows || res.rows.length === 0) return null;
+    return res.rows[0];
+  },
+
+  async getActiveBookingsByCounselorAndDate(
+    counselorId: number,
+    bookingDate: string
+  ): Promise<any[]> {
+    const res = await pool.query(
+      `SELECT booking_id, booking_date, booking_time, status
+       FROM bookings
+       WHERE counselor_id = $1 
+         AND booking_date::text LIKE $2 || '%'
+         AND status IN ('pending', 'confirmed')`,
+      [counselorId, bookingDate]
+    );
+    return res.rows;
+  },
+
+  async findActiveBookingBySlot(
+    counselorId: number,
+    bookingDate: string,
+    bookingTime: string
+  ): Promise<any | null> {
+    const timePrefix = bookingTime.slice(0, 5);
+    const res = await pool.query(
+      `SELECT booking_id, booking_date, booking_time, status
+       FROM bookings
+       WHERE counselor_id = $1
+         AND booking_date::text LIKE $2 || '%'
+         AND booking_time::text LIKE $3 || '%'
+         AND status IN ('pending', 'confirmed')
+       LIMIT 1`,
+      [counselorId, bookingDate, timePrefix]
+    );
+    if (!res.rows || res.rows.length === 0) return null;
+    return res.rows[0];
+  },
+
+  async getPendingBookings(): Promise<any[]> {
+    const res = await pool.query(
+      `SELECT b.booking_id, b.student_id, b.counselor_id, b.booking_date, b.booking_time,
+              b.status, c.timezone AS counselor_timezone
+       FROM bookings b
+       LEFT JOIN counselors c ON b.counselor_id = c.counselor_id
+       WHERE b.status = 'pending'`
+    );
+    return res.rows;
+  },
 };
 
 export default bookingRepository;
+

@@ -1221,7 +1221,7 @@ const Appointments: React.FC = () => {
                           const isCancelled =
                             statusKey === "cancelled" ||
                             statusKey === "canceled";
-
+                          const isClosed = statusKey === "closed";
                           return (
                             <div
                               key={String(
@@ -1308,6 +1308,10 @@ const Appointments: React.FC = () => {
                                 {isCancelled ? (
                                   <span className="text-sm px-3 py-2 rounded-md bg-red-50 text-red-600">
                                     Cancelled
+                                  </span>
+                                ) : isClosed ? (
+                                  <span className="text-sm px-3 py-2 rounded-md bg-gray-100 text-gray-500">
+                                    Closed
                                   </span>
                                 ) : (
                                   <>

@@ -760,6 +760,10 @@ const BookingList: React.FC = () => {
       return darkMode
         ? "bg-blue-900 text-blue-300"
         : "bg-blue-100 text-blue-700";
+    if (s === "closed")
+      return darkMode
+        ? "bg-gray-700 text-gray-400"
+        : "bg-gray-100 text-gray-500";
     return darkMode ? "bg-red-900 text-red-300" : "bg-red-100 text-red-700";
   };
 
@@ -786,6 +790,8 @@ const BookingList: React.FC = () => {
 
     const noteExists = hasNoteForBooking(b);
     const isCompleted = String(status).toLowerCase() === "completed";
+    const isClosed = String(status).toLowerCase() === "closed";
+    const isActionDisabled = isCompleted || isClosed;
 
     return (
       <div
@@ -827,71 +833,79 @@ const BookingList: React.FC = () => {
 
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={buttonVariants.confirm}
-              onClick={() => handleAction(id as any, "confirm")}
-              disabled={
-                actionLoadingId === id ||
-                isCompleted ||
-                status === "confirmed" ||
-                status === "cancelled" ||
-                status === "canceled"
-              }
-            >
-              Confirm
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className={buttonVariants.reschedule}
-              onClick={() => openRescheduleUI(b)}
-              disabled={
-                actionLoadingId === id ||
-                isCompleted ||
-                status === "cancelled" ||
-                status === "canceled"
-              }
-            >
-              Reschedule
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className={buttonVariants.completed}
-              onClick={() => handleAction(id as any, "complete")}
-              disabled={
-                actionLoadingId === id ||
-                isCompleted ||
-                status === "cancelled" ||
-                status === "canceled"
-              }
-            >
-              Completed
-            </Button>
-
-            {!noteExists ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className={buttonVariants.notes}
-                onClick={() => openNotesModalForBooking(b)}
-                disabled={isCompleted || actionLoadingId === id}
-              >
-                Notes
-              </Button>
+            {isClosed ? (
+              <span className={`text-xs px-3 py-2 rounded-md ${darkMode ? "bg-gray-700 text-gray-400" : "bg-gray-100 text-gray-500"}`}>
+                Slot expired — no action available
+              </span>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className={buttonVariants.filled}
-                disabled
-              >
-                Filled
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={buttonVariants.confirm}
+                  onClick={() => handleAction(id as any, "confirm")}
+                  disabled={
+                    actionLoadingId === id ||
+                    isActionDisabled ||
+                    status === "confirmed" ||
+                    status === "cancelled" ||
+                    status === "canceled"
+                  }
+                >
+                  Confirm
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={buttonVariants.reschedule}
+                  onClick={() => openRescheduleUI(b)}
+                  disabled={
+                    actionLoadingId === id ||
+                    isActionDisabled ||
+                    status === "cancelled" ||
+                    status === "canceled"
+                  }
+                >
+                  Reschedule
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={buttonVariants.completed}
+                  onClick={() => handleAction(id as any, "complete")}
+                  disabled={
+                    actionLoadingId === id ||
+                    isActionDisabled ||
+                    status === "cancelled" ||
+                    status === "canceled"
+                  }
+                >
+                  Completed
+                </Button>
+
+                {!noteExists ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={buttonVariants.notes}
+                    onClick={() => openNotesModalForBooking(b)}
+                    disabled={isActionDisabled || actionLoadingId === id}
+                  >
+                    Notes
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={buttonVariants.filled}
+                    disabled
+                  >
+                    Filled
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1103,6 +1117,8 @@ const BookingList: React.FC = () => {
                   const noteExists = hasNoteForBooking(b);
                   const isCompleted =
                     String(status).toLowerCase() === "completed";
+                  const isClosed = String(status).toLowerCase() === "closed";
+                  const isActionDisabled = isCompleted || isClosed;
 
                   return (
                     <TableRow key={String(id)}>
@@ -1142,72 +1158,80 @@ const BookingList: React.FC = () => {
 
                       {!isAdminUser && (
                         <TableCell className="text-right space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={buttonVariants.confirm}
-                            onClick={() => handleAction(id as any, "confirm")}
-                            disabled={
-                              actionLoadingId === id ||
-                              isCompleted ||
-                              status === "confirmed" ||
-                              status === "cancelled" ||
-                              status === "canceled"
-                            }
-                          >
-                            Confirm
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={buttonVariants.reschedule}
-                            onClick={() => {
-                              openRescheduleUI(b);
-                            }}
-                            disabled={
-                              actionLoadingId === id ||
-                              isCompleted ||
-                              status === "cancelled" ||
-                              status === "canceled"
-                            }
-                          >
-                            Reschedule
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={buttonVariants.completed}
-                            onClick={() => handleAction(id as any, "complete")}
-                            disabled={
-                              actionLoadingId === id ||
-                              isCompleted ||
-                              status === "cancelled" ||
-                              status === "canceled"
-                            }
-                          >
-                            Completed
-                          </Button>
-
-                          {!noteExists ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={buttonVariants.notes}
-                              onClick={() => openNotesModalForBooking(b)}
-                              title="Add session note"
-                              disabled={isCompleted || actionLoadingId === id}
-                            >
-                              Notes
-                            </Button>
+                          {isClosed ? (
+                            <span className={`text-xs px-2 py-1 rounded-md ${darkMode ? "bg-gray-700 text-gray-400" : "bg-gray-100 text-gray-500"}`}>
+                              Slot expired
+                            </span>
                           ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={buttonVariants.filled}
-                              disabled
-                            >
-                              Filled
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={buttonVariants.confirm}
+                                onClick={() => handleAction(id as any, "confirm")}
+                                disabled={
+                                  actionLoadingId === id ||
+                                  isActionDisabled ||
+                                  status === "confirmed" ||
+                                  status === "cancelled" ||
+                                  status === "canceled"
+                                }
+                              >
+                                Confirm
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={buttonVariants.reschedule}
+                                onClick={() => {
+                                  openRescheduleUI(b);
+                                }}
+                                disabled={
+                                  actionLoadingId === id ||
+                                  isActionDisabled ||
+                                  status === "cancelled" ||
+                                  status === "canceled"
+                                }
+                              >
+                                Reschedule
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={buttonVariants.completed}
+                                onClick={() => handleAction(id as any, "complete")}
+                                disabled={
+                                  actionLoadingId === id ||
+                                  isActionDisabled ||
+                                  status === "cancelled" ||
+                                  status === "canceled"
+                                }
+                              >
+                                Completed
+                              </Button>
+
+                              {!noteExists ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={buttonVariants.notes}
+                                  onClick={() => openNotesModalForBooking(b)}
+                                  title="Add session note"
+                                  disabled={isActionDisabled || actionLoadingId === id}
+                                >
+                                  Notes
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={buttonVariants.filled}
+                                  disabled
+                                >
+                                  Filled
+                                </Button>
+                              )}
+                            </>
                           )}
                         </TableCell>
                       )}

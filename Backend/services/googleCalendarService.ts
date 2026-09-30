@@ -18,7 +18,7 @@ dotenv.config();
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI!;
-const DEFAULT_TIMEZONE = process.env.DEFAULT_TIMEZONE || "Asia/Kolkata";
+export const DEFAULT_TIMEZONE = process.env.DEFAULT_TIMEZONE || "Asia/Kolkata";
 
 function buildOAuthClient(redirectUri?: string) {
   return new google.auth.OAuth2(
@@ -50,7 +50,7 @@ function expiryToISOString(expiry: any): string | null {
 /**
  * Parse many human time formats into Luxon DateTime in tz.
  */
-function parseBookingStartDateTime(
+export function parseBookingStartDateTime(
   bookingDate: string,
   bookingTimeRaw: string,
   tz: string
@@ -337,7 +337,8 @@ const GoogleCalendarService = {
   },
 
   /**
-   * bookSession default duration changed to 60 minutes
+   * bookSession — saves booking to DB with status=pending. No Google Calendar event is
+   * created here. The event is only added to the calendar when the counselor confirms.
    */
   bookSession: async (payload: {
     student_id?: number | null;
@@ -411,31 +412,6 @@ const GoogleCalendarService = {
       throw new Error("Selected slot is no longer available");
     }
 
-    const event: any = {
-      summary:
-        summary ?? `Counselling session with ${student_email ?? "student"}`,
-      description: description ?? additional_notes ?? "",
-      start: { dateTime: startDT.toISO(), timeZone: tz },
-      end: { dateTime: endDT.toISO(), timeZone: tz },
-      attendees: [{ email: counselor.email }],
-      reminders: { useDefault: true },
-    };
-    if (student_email) event.attendees.push({ email: student_email });
-
-    // Create the event; catch and surface Google API errors
-    let created: any;
-    try {
-      created = await (calendar.events.insert as any)({
-        calendarId: calId,
-        resource: event,
-        sendUpdates: "all",
-      });
-    } catch (e: any) {
-      throw new Error("Google event creation failed: " + (e?.message ?? e));
-    }
-    const googleEvent = created?.data;
-    console.log(`[GoogleCalendarService] Created Google Event: ${JSON.stringify(googleEvent)}`);
-
     // Resolve or create student row
     let finalStudentId: number | null = null;
     try {
@@ -473,7 +449,8 @@ const GoogleCalendarService = {
       throw new Error("studentRepository failure: " + (err as any).message);
     }
 
-    // Create booking row in DB with google_event_id already set
+    // Create booking row in DB with status=pending and NO google_event_id.
+    // The Google Calendar event is created only when the counselor confirms the booking.
     const bookingRow = await bookingRepository.createBooking(
       finalStudentId,
       counselor_id,
@@ -482,17 +459,85 @@ const GoogleCalendarService = {
       year_level ?? null,
       additional_notes ?? null,
       undefined, // client
-      googleEvent?.id ?? null
+      null // google_event_id — NOT set here; created on counselor confirmation
     );
 
-    if (googleEvent?.id) {
-      console.log(`[GoogleCalendarService] Created booking ${bookingRow.booking_id} with google_event_id: ${googleEvent.id}`);
-    } else {
-      console.warn(`[GoogleCalendarService] Created booking ${bookingRow.booking_id} WITHOUT google_event_id (googleEvent?.id was missing)`);
+    console.log(`[GoogleCalendarService] Created booking ${bookingRow.booking_id} as PENDING. Google Calendar event will be created when counselor confirms.`);
+    return { booking: bookingRow, googleEvent: null };
+  },
+
+  /**
+   * createCalendarEventForBooking — called when a counselor confirms a booking.
+   * Creates the Google Calendar event for the booking and stores the event ID.
+   */
+  createCalendarEventForBooking: async (bookingId: string | number) => {
+    const bookingRow = await bookingRepository.getBookingById(bookingId);
+    if (!bookingRow) {
+      return { success: false, reason: "booking_not_found" };
     }
 
-    return { booking: bookingRow, googleEvent };
+    const counselorId = Number(bookingRow.counselor_id ?? bookingRow.c_counselor_id);
+    if (!counselorId) {
+      return { success: false, reason: "missing_counselor_id" };
+    }
+
+    let calendarClient: any;
+    let counselor: any;
+    try {
+      const clientResult = await GoogleCalendarService.getAuthorizedCalendarClient(counselorId);
+      calendarClient = clientResult.calendar;
+      counselor = clientResult.counselor;
+    } catch (e: any) {
+      console.warn(`[GoogleCalendarService] Counselor ${counselorId} not Google-connected or token invalid: ${e?.message}`);
+      return { success: false, reason: "google_not_connected", error: e?.message };
+    }
+
+    const tz = counselor.timezone ?? DEFAULT_TIMEZONE;
+    const calId = counselor.google_calendar_id ?? counselor.email;
+
+    const startDT = parseBookingStartDateTime(
+      bookingRow.booking_date,
+      bookingRow.booking_time,
+      tz
+    );
+    if (!startDT || !startDT.isValid) {
+      return { success: false, reason: "invalid_booking_datetime" };
+    }
+
+    const dbDuration = await counselorSettingsRepository.getSessionDuration(counselorId);
+    const durationMinutes = dbDuration || 60;
+    const endDT = startDT.plus({ minutes: durationMinutes });
+
+    const studentEmail = bookingRow.student_email;
+    const event: any = {
+      summary: `Counselling session with ${studentEmail ?? bookingRow.student_name ?? "student"}`,
+      description: bookingRow.additional_notes ?? "",
+      start: { dateTime: startDT.toISO(), timeZone: tz },
+      end: { dateTime: endDT.toISO(), timeZone: tz },
+      attendees: [{ email: counselor.email }],
+      reminders: { useDefault: true },
+    };
+    if (studentEmail) event.attendees.push({ email: studentEmail });
+
+    try {
+      const created = await (calendarClient.events.insert as any)({
+        calendarId: calId,
+        resource: event,
+        sendUpdates: "all",
+      });
+      const googleEvent = created?.data;
+      if (googleEvent?.id) {
+        await bookingRepository.updateGoogleEventId(bookingId, googleEvent.id);
+        console.log(`[GoogleCalendarService] Created Google Calendar event ${googleEvent.id} for booking ${bookingId} on confirmation.`);
+        return { success: true, googleEvent };
+      }
+      return { success: false, reason: "no_event_id_returned" };
+    } catch (e: any) {
+      console.error(`[GoogleCalendarService] Failed to create Google Calendar event for booking ${bookingId}:`, e);
+      return { success: false, reason: "google_api_error", error: e?.message };
+    }
   },
+
 
   rescheduleEventForBooking: async (
     bookingIdOrRow: any,

@@ -257,15 +257,27 @@ const CalendarPage: React.FC = () => {
     String(b.status ?? "").toLowerCase() === "canceled" ||
     String(b.status ?? "").toLowerCase() === "cancelled";
 
+  const isClosed = (b: Booking) =>
+    String(b.status ?? "").toLowerCase() === "closed";
+
+  const isPending = (b: Booking) =>
+    String(b.status ?? "").toLowerCase() === "pending";
+
+  // Only show confirmed/completed bookings on the calendar.
+  // Pending = not yet confirmed by counselor, Closed = expired without confirmation.
+  const calendarBookings = bookings.filter(
+    (b) => !isPending(b) && !isClosed(b)
+  );
+
   const total = bookings.length;
-  const upcoming = bookings.filter((b) => {
+  const upcoming = calendarBookings.filter((b) => {
     const dt = parseDateTime(b.booking_date!, b.booking_time ?? null);
     if (!dt) return !isCanceled(b);
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     return dt >= startOfDay && !isCanceled(b);
   }).length;
-  const completed = bookings.filter((b) => {
+  const completed = calendarBookings.filter((b) => {
     const dt = parseDateTime(b.booking_date!, b.booking_time ?? null);
     if (!dt) return false;
     const endOfToday = new Date();
@@ -320,7 +332,7 @@ const CalendarPage: React.FC = () => {
   };
 
   const buildEvents = () => {
-    const internalEvents = bookings
+    const internalEvents = calendarBookings
       .map((b) => mapBookingToFC(b))
       .filter(Boolean) as any[];
     internalEvents.sort(
