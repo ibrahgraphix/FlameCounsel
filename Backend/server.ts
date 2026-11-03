@@ -28,16 +28,25 @@ runExpiredBookingsJob();
 setInterval(runExpiredBookingsJob, 5 * 60 * 1000); // every 5 minutes
 
 // Load SSL certificates
-const sslCertPath =
-  process.env.SSL_CERT_PATH || "/opt/View/sslcertificates/council_certificate.crt";
-const sslCaPath =
-  process.env.SSL_CA_PATH || "/opt/View/sslcertificates/council_bundle.crt";
-const sslKeyPath =
-  process.env.SSL_KEY_PATH || "/opt/View/sslcertificates/council.key";
+const defaultCertPath = fs.existsSync(
+  "/etc/letsencrypt/live/flamewellbeing.work.gd/fullchain.pem"
+)
+  ? "/etc/letsencrypt/live/flamewellbeing.work.gd/fullchain.pem"
+  : "/opt/View/sslcertificates/council_certificate.crt";
+
+const defaultKeyPath = fs.existsSync(
+  "/etc/letsencrypt/live/flamewellbeing.work.gd/privkey.pem"
+)
+  ? "/etc/letsencrypt/live/flamewellbeing.work.gd/privkey.pem"
+  : "/opt/View/sslcertificates/council.key";
+
+const sslCertPath = process.env.SSL_CERT_PATH || defaultCertPath;
+const sslCaPath = process.env.SSL_CA_PATH;
+const sslKeyPath = process.env.SSL_KEY_PATH || defaultKeyPath;
 
 const sslOptions: https.ServerOptions = {
   cert: fs.existsSync(sslCertPath) ? fs.readFileSync(sslCertPath) : undefined,
-  ca: fs.existsSync(sslCaPath) ? fs.readFileSync(sslCaPath) : undefined,
+  ca: sslCaPath && fs.existsSync(sslCaPath) ? fs.readFileSync(sslCaPath) : undefined,
   key: fs.existsSync(sslKeyPath) ? fs.readFileSync(sslKeyPath) : undefined,
 };
 
