@@ -56,6 +56,8 @@ counselorSettingsRouter = tryRequire("./routes/counselorSettingsRoutes");
 const allowedOrigins = [
   "https://flamewellbeing.work.gd",
   "https://flamewellbeing.work.gd:7070",
+  "https://www.flamewellbeing.work.gd",
+  "https://www.flamewellbeing.work.gd:7070",
   "http://localhost:7070",
   "http://localhost:5173",
   ...(process.env.FRONTEND_ORIGIN ? [process.env.FRONTEND_ORIGIN] : []),
