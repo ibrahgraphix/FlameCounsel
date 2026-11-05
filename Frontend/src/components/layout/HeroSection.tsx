@@ -2,24 +2,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { EffectFade, Autoplay } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/effect-fade";
 import { useDetectDarkMode } from "@/components/ui/card";
-
-const slides = [
-  { src: "/assets/flameUni.webp", alt: "FLAME University Campus" },
-  { src: "/assets/mental-health.png", alt: "Mental Health and Wellness Support" },
-  { src: "/assets/selfcare.png", alt: "Self Care and Reflection" },
-];
 
 const HeroSection: React.FC = () => {
   const isDark = useDetectDarkMode();
   const gradient = "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)";
   const bgColor = isDark ? "bg-gray-900" : "bg-white";
   const mutedText = isDark ? "text-gray-400" : "text-gray-600";
-  const textColor = isDark ? "text-gray-300" : "text-gray-700";
 
   return (
     <section className={`py-12 sm:py-16 overflow-hidden ${bgColor}`}>
@@ -69,31 +58,14 @@ const HeroSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Swiper / Image */}
+        {/* Hero Image */}
         <div className="w-full md:w-1/2 flex justify-center">
           <div className="w-full max-w-md sm:max-w-md md:max-w-full">
-            <Swiper
-              modules={[EffectFade, Autoplay]}
-              effect="fade"
-              autoplay={
-                slides.length > 1
-                  ? { delay: 4000, disableOnInteraction: false }
-                  : false
-              }
-              loop={slides.length > 1}
-              className="rounded-xl overflow-hidden shadow-lg"
-            >
-              {slides.map((slide, i) => (
-                <SwiperSlide key={i}>
-                  <img
-                    src={slide.src}
-                    alt={slide.alt}
-                    className="w-full h-56 sm:h-72 md:h-80 object-cover rounded-xl"
-                    loading="lazy"
-                  />
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            <img
+              src="/assets/flameUni.webp"
+              alt="FLAME University Campus"
+              className="w-full h-56 sm:h-72 md:h-80 object-cover rounded-xl shadow-lg"
+            />
           </div>
         </div>
       </div>
