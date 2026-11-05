@@ -42,7 +42,7 @@ const io = new SocketIOServer(server, {
   path: "/socket.io/",
 });
 
-io.on("connection", (socket) => {
+io.on("connection", (socket: import("socket.io").Socket) => {
   console.log(`[Socket.IO] Client connected: ${socket.id}`);
   socket.on("disconnect", () => {
     console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
