@@ -29,29 +29,33 @@ setInterval(runExpiredBookingsJob, 5 * 60 * 1000); // every 5 minutes
 
 // Load SSL certificates
 const defaultCertPath = fs.existsSync(
-  "/etc/letsencrypt/live/flamewellbeing.work.gd/fullchain.pem"
+  "/etc/letsencrypt/live/flamewellbeing.in/fullchain.pem"
 )
-  ? "/etc/letsencrypt/live/flamewellbeing.work.gd/fullchain.pem"
-  : "/opt/View/sslcertificates/council_certificate.crt";
+  ? "/etc/letsencrypt/live/flamewellbeing.in/fullchain.pem"
+  : fs.existsSync("/opt/View/sslcertificates/council_certificate.crt")
+  ? "/opt/View/sslcertificates/council_certificate.crt"
+  : undefined;
 
 const defaultKeyPath = fs.existsSync(
-  "/etc/letsencrypt/live/flamewellbeing.work.gd/privkey.pem"
+  "/etc/letsencrypt/live/flamewellbeing.in/privkey.pem"
 )
-  ? "/etc/letsencrypt/live/flamewellbeing.work.gd/privkey.pem"
-  : "/opt/View/sslcertificates/council.key";
+  ? "/etc/letsencrypt/live/flamewellbeing.in/privkey.pem"
+  : fs.existsSync("/opt/View/sslcertificates/council.key")
+  ? "/opt/View/sslcertificates/council.key"
+  : undefined;
 
 const sslCertPath = process.env.SSL_CERT_PATH || defaultCertPath;
 const sslCaPath = process.env.SSL_CA_PATH;
 const sslKeyPath = process.env.SSL_KEY_PATH || defaultKeyPath;
 
 const sslOptions: https.ServerOptions = {
-  cert: fs.existsSync(sslCertPath) ? fs.readFileSync(sslCertPath) : undefined,
+  cert: sslCertPath && fs.existsSync(sslCertPath) ? fs.readFileSync(sslCertPath) : undefined,
   ca: sslCaPath && fs.existsSync(sslCaPath) ? fs.readFileSync(sslCaPath) : undefined,
-  key: fs.existsSync(sslKeyPath) ? fs.readFileSync(sslKeyPath) : undefined,
+  key: sslKeyPath && fs.existsSync(sslKeyPath) ? fs.readFileSync(sslKeyPath) : undefined,
 };
 
 const PORT = process.env.PORT || 4000;
-const DOMAIN = process.env.BACKEND_URL || "https://flamewellbeing.work.gd";
+const DOMAIN = process.env.BACKEND_URL || "https://flamewellbeing.in";
 https.createServer(sslOptions, app).listen(PORT, () => {
   console.log(`Server listening on ${DOMAIN}:${PORT}`);
 });

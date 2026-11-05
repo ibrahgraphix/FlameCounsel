@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 7070,
+    allowedHosts: ["ra1045.tunnel.dnsexit.com"],
     proxy: {
       "/api": {
         target: process.env.VITE_BACKEND_URL || "http://localhost:4000",
