@@ -5,13 +5,18 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
-    host: "0.0.0.0",
+    host: "localhost",
     port: 7070,
-    allowedHosts: ["ra1045.tunnel.dnsexit.com"],
     proxy: {
       "/api": {
         target: process.env.VITE_BACKEND_URL || "http://localhost:4000",
         changeOrigin: true,
+        secure: false,
+      },
+      "/socket.io": {
+        target: process.env.VITE_BACKEND_URL || "http://localhost:4000",
+        changeOrigin: true,
+        ws: true,
         secure: false,
       },
       "/uploads": {

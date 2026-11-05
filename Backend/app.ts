@@ -63,6 +63,9 @@ const allowedOrigins = [
   "http://www.flamewellbeing.in",
   "http://www.flamewellbeing.in:7070",
   "http://localhost:7070",
+  "http://localhost:4000",
+  "http://127.0.0.1:7070",
+  "http://127.0.0.1:4000",
   "http://localhost:5173",
   ...(process.env.FRONTEND_ORIGIN ? [process.env.FRONTEND_ORIGIN] : []),
   ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
@@ -155,7 +158,8 @@ app.get("/api/counselors/google/calendar", async (_req, res) => {
 });
 
 // health
-app.get("/health", (_req, res) => res.json({ ok: true }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "backend" }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, service: "backend" }));
 
 // Static client serving: candidates are evaluated relative to this file's directory
 const buildCandidates = [
