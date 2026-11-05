@@ -21,11 +21,8 @@ import app from "./app";
 import { runMigrations } from "./utils/migration";
 import bookingService from "./services/bookingService";
 
-// Run DB migrations on startup
-runMigrations();
-
 // ---- Auto-close expired pending bookings ----
-// Run immediately on startup, then every 5 minutes.
+// Run immediately on startup (after migrations), then every 5 minutes.
 const runExpiredBookingsJob = async () => {
   try {
     const count = await bookingService.closePendingExpiredBookings();
@@ -37,8 +34,11 @@ const runExpiredBookingsJob = async () => {
   }
 };
 
-runExpiredBookingsJob();
-setInterval(runExpiredBookingsJob, 5 * 60 * 1000); // every 5 minutes
+(async () => {
+  await runMigrations();
+  await runExpiredBookingsJob();
+  setInterval(runExpiredBookingsJob, 5 * 60 * 1000); // every 5 minutes
+})();
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
 const HOST = process.env.HOST || "localhost";
