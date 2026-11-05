@@ -6,7 +6,17 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 
-dotenv.config();
+const envCandidates = [
+  path.resolve(process.cwd(), "Backend/.env"),
+  path.resolve(__dirname, "../.env"),
+  path.resolve(__dirname, "../../.env"),
+  path.resolve(process.cwd(), ".env"),
+];
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+}
 
 const app = express();
 

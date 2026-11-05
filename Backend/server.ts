@@ -1,12 +1,25 @@
 // server.ts
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+
+const envCandidates = [
+  path.resolve(process.cwd(), "Backend/.env"),
+  path.resolve(__dirname, "../.env"),
+  path.resolve(__dirname, "../../.env"),
+  path.resolve(process.cwd(), ".env"),
+];
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+}
+
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import app from "./app";
-import dotenv from "dotenv";
 import { runMigrations } from "./utils/migration";
 import bookingService from "./services/bookingService";
-
-dotenv.config();
 
 // Run DB migrations on startup
 runMigrations();
